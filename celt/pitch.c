@@ -143,6 +143,22 @@ static void celt_fir5(const opus_val16 *x,
    mem[4]=mem4;
 }
 
+#ifndef OVERRIDE_CELT_INNER_PROD
+#if ENABLE_OPTIMIZE && defined(FIXED_POINT)
+OPUS_INLINE opus_val32 celt_inner_prod_c(const opus_val16 *x, const opus_val16 *y,
+      int N)
+{
+   int i;
+   opus_val32 xy=0;
+   for (i=0;i<N;i++)
+      xy = MAC16_16(xy, x[i], y[i]);
+   return xy;
+}
+
+opus_val32 (*celt_inner_prod)(const opus_val16 *x, const opus_val16 *y,
+      int N) = celt_inner_prod_c;
+#endif
+#endif
 
 void pitch_downsample(celt_sig * OPUS_RESTRICT x[], opus_val16 * OPUS_RESTRICT x_lp,
       int len, int C, int arch)

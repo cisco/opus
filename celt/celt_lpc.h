@@ -34,12 +34,28 @@
 
 void _celt_lpc(opus_val16 *_lpc, const opus_val32 *ac, int p);
 
-void celt_fir(const opus_val16 *x,
+#if ENABLE_OPTIMIZE && defined(FIXED_POINT)
+void (*celt_fir)
+#else
+void celt_fir
+#endif
+(
+         const opus_val16 *x,
          const opus_val16 *num,
          opus_val16 *y,
          int N,
          int ord,
          opus_val16 *mem);
+
+#if ENABLE_OPTIMIZE && defined(FIXED_POINT)
+void celt_fir_sse(
+         const opus_val16 *x,
+         const opus_val16 *num,
+         opus_val16 *y,
+         int N,
+         int ord,
+         opus_val16 *mem);
+#endif
 
 void celt_iir(const opus_val32 *x,
          const opus_val16 *den,

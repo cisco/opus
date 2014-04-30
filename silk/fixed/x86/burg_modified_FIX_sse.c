@@ -1,33 +1,12 @@
-/***********************************************************************
-Copyright (c) 2006-2011, Skype Limited. All rights reserved.
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-- Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-- Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in the
-documentation and/or other materials provided with the distribution.
-- Neither the name of Internet Society, IETF or IETF Trust, nor the
-names of specific contributors, may be used to endorse or promote
-products derived from this software without specific prior written
-permission.
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.
-***********************************************************************/
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+
+#if ENABLE_OPTIMIZE
+#include "xmmintrin.h"
+#include "emmintrin.h"
+#include "smmintrin.h"
 
 #include "SigProc_FIX.h"
 #include "define.h"
@@ -42,12 +21,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define MAX_RSHIFTS                 (32 - QA)
 
 /* Compute reflection coefficients from input signal */
-#if ENABLE_OPTIMIZE
-void silk_burg_modified_c
-#else
-void silk_burg_modified
-#endif
-(
+void silk_burg_modified_sse(
     opus_int32                  *res_nrg,           /* O    Residual energy                                             */
     opus_int                    *res_nrg_Q,         /* O    Residual energy Q value                                     */
     opus_int32                  A_Q16[],            /* O    Prediction coefficients (length order)                      */
@@ -68,6 +42,9 @@ void silk_burg_modified
     opus_int32       CAf[ SILK_MAX_ORDER_LPC + 1 ];
     opus_int32       CAb[ SILK_MAX_ORDER_LPC + 1 ];
     opus_int32       xcorr[ SILK_MAX_ORDER_LPC ];
+
+    __m128i FIRST_3210, LAST_3210, ATMP_3210, TMP1_3210, TMP2_3210, T1_3210, T2_3210, PTR_3210, SUBFR_3210, X1_3210, X2_3210;
+    __m128i CONST1 = _mm_set1_epi32(1);
 
     silk_assert( subfr_length * nb_subfr <= MAX_FRAME_SIZE );
 
@@ -155,6 +132,54 @@ void silk_burg_modified
                 x2  = -silk_LSHIFT32( (opus_int32)x_ptr[ subfr_length - n - 1 ], -rshifts );            /* Q( -rshifts ) */
                 tmp1 = silk_LSHIFT32( (opus_int32)x_ptr[ n ],                    17 );                  /* Q17 */
                 tmp2 = silk_LSHIFT32( (opus_int32)x_ptr[ subfr_length - n - 1 ], 17 );                  /* Q17 */
+#if ENABLE_OPTIMIZE
+                X1_3210 = _mm_set1_epi32(x1);
+                X2_3210 = _mm_set1_epi32(x2);
+                TMP1_3210 = _mm_setzero_si128();
+                TMP2_3210 = _mm_setzero_si128();
+                for( k = 0; k < n - 3; k += 4 ) {
+                    PTR_3210   = _mm_cvtepi16_epi32(*(__m128i*)&x_ptr[ n - k - 1 - 3 ]);
+                    SUBFR_3210 = _mm_cvtepi16_epi32(*(__m128i*)&x_ptr[ subfr_length - n + k ]);
+                    FIRST_3210 = _mm_loadu_si128((__m128i*)&C_first_row[ k ]);
+                    PTR_3210   = _mm_shuffle_epi32(PTR_3210,  _MM_SHUFFLE(0, 1, 2, 3));
+                    LAST_3210  = _mm_loadu_si128((__m128i*)&C_last_row[ k ]);
+                    ATMP_3210  = _mm_loadu_si128((__m128i*)&Af_QA[ k ]);
+
+                    T1_3210 = _mm_mullo_epi32(PTR_3210, X1_3210);
+                    T2_3210 = _mm_mullo_epi32(SUBFR_3210, X2_3210);
+
+                    ATMP_3210 = _mm_srai_epi32(ATMP_3210, 7);
+                    ATMP_3210 = _mm_add_epi32(ATMP_3210, CONST1);
+                    ATMP_3210 = _mm_srai_epi32(ATMP_3210, 1);
+
+                    FIRST_3210 = _mm_add_epi32(FIRST_3210, T1_3210);
+                    LAST_3210 = _mm_add_epi32(LAST_3210, T2_3210);
+
+                    PTR_3210   = _mm_mullo_epi32(ATMP_3210, PTR_3210);
+                    SUBFR_3210   = _mm_mullo_epi32(ATMP_3210, SUBFR_3210);
+
+                    _mm_storeu_si128((__m128i*)&C_first_row[ k ], FIRST_3210);
+                    _mm_storeu_si128((__m128i*)&C_last_row[ k ], LAST_3210);
+
+                    TMP1_3210 = _mm_add_epi32(TMP1_3210, PTR_3210);
+                    TMP2_3210 = _mm_add_epi32(TMP2_3210, SUBFR_3210);
+                }
+                TMP1_3210 = _mm_hadd_epi32(TMP1_3210, TMP1_3210);
+                TMP2_3210 = _mm_hadd_epi32(TMP2_3210, TMP2_3210);
+                TMP1_3210 = _mm_hadd_epi32(TMP1_3210, TMP1_3210);
+                TMP2_3210 = _mm_hadd_epi32(TMP2_3210, TMP2_3210);
+
+                tmp1 += _mm_extract_epi32(TMP1_3210, 0);
+                tmp2 += _mm_extract_epi32(TMP2_3210, 0);
+
+                for( ; k < n; k++ ) {
+                    C_first_row[ k ] = silk_MLA( C_first_row[ k ], x1, x_ptr[ n - k - 1 ]            ); /* Q( -rshifts ) */
+                    C_last_row[ k ]  = silk_MLA( C_last_row[ k ],  x2, x_ptr[ subfr_length - n + k ] ); /* Q( -rshifts ) */
+                    Atmp1 = silk_RSHIFT_ROUND( Af_QA[ k ], QA - 17 );                                   /* Q17 */
+                    tmp1 = silk_MLA( tmp1, x_ptr[ n - k - 1 ],            Atmp1 );                      /* Q17 */
+                    tmp2 = silk_MLA( tmp2, x_ptr[ subfr_length - n + k ], Atmp1 );                      /* Q17 */
+                }
+#else
                 for( k = 0; k < n; k++ ) {
                     C_first_row[ k ] = silk_MLA( C_first_row[ k ], x1, x_ptr[ n - k - 1 ]            ); /* Q( -rshifts ) */
                     C_last_row[ k ]  = silk_MLA( C_last_row[ k ],  x2, x_ptr[ subfr_length - n + k ] ); /* Q( -rshifts ) */
@@ -162,14 +187,67 @@ void silk_burg_modified
                     tmp1 = silk_MLA( tmp1, x_ptr[ n - k - 1 ],            Atmp1 );                      /* Q17 */
                     tmp2 = silk_MLA( tmp2, x_ptr[ subfr_length - n + k ], Atmp1 );                      /* Q17 */
                 }
-                tmp1 = -tmp1;                                                                           /* Q17 */
-                tmp2 = -tmp2;                                                                           /* Q17 */
+#endif
+                tmp1 = -tmp1;                /* Q17 */
+                tmp2 = -tmp2;                /* Q17 */
+
+            #if ENABLE_OPTIMIZE
+                __m128i xmm_tmp1, xmm_tmp2;
+                __m128i xmm_x_ptr_n_k_x2x0, xmm_x_ptr_n_k_x3x1;
+                __m128i xmm_x_ptr_sub_x2x0, xmm_x_ptr_sub_x3x1;
+
+                xmm_tmp1 = _mm_set1_epi32(tmp1);
+                xmm_tmp2 = _mm_set1_epi32(tmp2);
+
+                for( k = 0; k <= n - 3; k += 4 ) {
+                    xmm_x_ptr_n_k_x2x0 = _mm_cvtepi16_epi32(*(__m128i*)&x_ptr[ n - k - 3 ]);
+                    xmm_x_ptr_sub_x2x0 = _mm_cvtepi16_epi32(*(__m128i*)&x_ptr[ subfr_length - n + k - 1 ]);
+
+                    xmm_x_ptr_n_k_x2x0 = _mm_shuffle_epi32(xmm_x_ptr_n_k_x2x0, _MM_SHUFFLE(0, 1, 2, 3));
+
+                    xmm_x_ptr_n_k_x2x0 = _mm_slli_epi32(xmm_x_ptr_n_k_x2x0, -rshifts - 1);
+                    xmm_x_ptr_sub_x2x0 = _mm_slli_epi32(xmm_x_ptr_sub_x2x0, -rshifts - 1);
+
+                    xmm_x_ptr_n_k_x3x1 = _mm_srli_si128(xmm_x_ptr_n_k_x2x0, 4);
+                    xmm_x_ptr_sub_x3x1 = _mm_srli_si128(xmm_x_ptr_sub_x2x0, 4);
+
+                    xmm_x_ptr_n_k_x2x0 = _mm_mul_epi32(xmm_x_ptr_n_k_x2x0, xmm_tmp1);
+                    xmm_x_ptr_n_k_x3x1 = _mm_mul_epi32(xmm_x_ptr_n_k_x3x1, xmm_tmp1);
+                    xmm_x_ptr_sub_x2x0 = _mm_mul_epi32(xmm_x_ptr_sub_x2x0, xmm_tmp2);
+                    xmm_x_ptr_sub_x3x1 = _mm_mul_epi32(xmm_x_ptr_sub_x3x1, xmm_tmp2);
+
+                    xmm_x_ptr_n_k_x2x0 = _mm_srli_epi64(xmm_x_ptr_n_k_x2x0, 16);
+                    xmm_x_ptr_n_k_x3x1 = _mm_slli_epi64(xmm_x_ptr_n_k_x3x1, 16);
+                    xmm_x_ptr_sub_x2x0 = _mm_srli_epi64(xmm_x_ptr_sub_x2x0, 16);
+                    xmm_x_ptr_sub_x3x1 = _mm_slli_epi64(xmm_x_ptr_sub_x3x1, 16);
+
+                    xmm_x_ptr_n_k_x2x0 = _mm_blend_epi16(xmm_x_ptr_n_k_x2x0, xmm_x_ptr_n_k_x3x1, 0xCC);
+                    xmm_x_ptr_sub_x2x0 = _mm_blend_epi16(xmm_x_ptr_sub_x2x0, xmm_x_ptr_sub_x3x1, 0xCC);
+
+                    X1_3210  = _mm_loadu_si128((__m128i*)&CAf[ k ]);
+                    PTR_3210 = _mm_loadu_si128((__m128i*)&CAb[ k ]);
+
+                    X1_3210  = _mm_add_epi32(X1_3210, xmm_x_ptr_n_k_x2x0);
+                    PTR_3210 = _mm_add_epi32(PTR_3210, xmm_x_ptr_sub_x2x0);
+
+                    _mm_storeu_si128((__m128i*)&CAf[ k ], X1_3210);
+                    _mm_storeu_si128((__m128i*)&CAb[ k ], PTR_3210);
+                }
+
+                for( ; k <= n; k++ ) {
+                    CAf[ k ] = silk_SMLAWW( CAf[ k ], tmp1,
+                        silk_LSHIFT32( (opus_int32)x_ptr[ n - k ], -rshifts - 1 ) );                    /* Q( -rshift ) */
+                    CAb[ k ] = silk_SMLAWW( CAb[ k ], tmp2,
+                        silk_LSHIFT32( (opus_int32)x_ptr[ subfr_length - n + k - 1 ], -rshifts - 1 ) ); /* Q( -rshift ) */
+                }
+            #else
                 for( k = 0; k <= n; k++ ) {
                     CAf[ k ] = silk_SMLAWW( CAf[ k ], tmp1,
                         silk_LSHIFT32( (opus_int32)x_ptr[ n - k ], -rshifts - 1 ) );                    /* Q( -rshift ) */
                     CAb[ k ] = silk_SMLAWW( CAb[ k ], tmp2,
                         silk_LSHIFT32( (opus_int32)x_ptr[ subfr_length - n + k - 1 ], -rshifts - 1 ) ); /* Q( -rshift ) */
                 }
+            #endif
             }
         }
 
@@ -283,17 +361,5 @@ void silk_burg_modified
     }
 }
 
-#if ENABLE_OPTIMIZE
-void (*silk_burg_modified)(
-    opus_int32                  *res_nrg,           /* O    Residual energy                                             */
-    opus_int                    *res_nrg_Q,         /* O    Residual energy Q value                                     */
-    opus_int32                  A_Q16[],            /* O    Prediction coefficients (length order)                      */
-    const opus_int16            x[],                /* I    Input signal, length: nb_subfr * ( D + subfr_length )       */
-    const opus_int32            minInvGain_Q30,     /* I    Inverse of max prediction gain                              */
-    const opus_int              subfr_length,       /* I    Input signal subframe length (incl. D preceding samples)    */
-    const opus_int              nb_subfr,           /* I    Number of subframes stacked in x                            */
-    const opus_int              D,                  /* I    Order                                                       */
-    int                         arch                /* I    Run-time architecture                                       */
-) = silk_burg_modified_c;
-#endif
 
+#endif

@@ -1,78 +1,15 @@
-/***********************************************************************
-Copyright (c) 2006-2011, Skype Limited. All rights reserved.
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-- Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-- Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in the
-documentation and/or other materials provided with the distribution.
-- Neither the name of Internet Society, IETF or IETF Trust, nor the
-names of specific contributors, may be used to endorse or promote
-products derived from this software without specific prior written
-permission.
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.
-***********************************************************************/
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
+
+#if ENABLE_OPTIMIZE
+#include "xmmintrin.h"
+#include "emmintrin.h"
+#include "smmintrin.h"
+
 #include "main.h"
 #include "stack_alloc.h"
-
-/* Silk VAD noise level estimation */
-
-#if !ENABLE_OPTIMIZE
-static OPUS_INLINE void silk_VAD_GetNoiseLevels(
-    const opus_int32             pX[ VAD_N_BANDS ], /* I    subband energies                            */
-    silk_VAD_state              *psSilk_VAD         /* I/O  Pointer to Silk VAD state                   */
-);
-#endif
-
-/**********************************/
-/* Initialization of the Silk VAD */
-/**********************************/
-opus_int silk_VAD_Init(                                         /* O    Return value, 0 if success                  */
-    silk_VAD_state              *psSilk_VAD                     /* I/O  Pointer to Silk VAD state                   */
-)
-{
-    opus_int b, ret = 0;
-
-    /* reset state memory */
-    silk_memset( psSilk_VAD, 0, sizeof( silk_VAD_state ) );
-
-    /* init noise levels */
-    /* Initialize array with approx pink noise levels (psd proportional to inverse of frequency) */
-    for( b = 0; b < VAD_N_BANDS; b++ ) {
-        psSilk_VAD->NoiseLevelBias[ b ] = silk_max_32( silk_DIV32_16( VAD_NOISE_LEVELS_BIAS, b + 1 ), 1 );
-    }
-
-    /* Initialize state */
-    for( b = 0; b < VAD_N_BANDS; b++ ) {
-        psSilk_VAD->NL[ b ]     = silk_MUL( 100, psSilk_VAD->NoiseLevelBias[ b ] );
-        psSilk_VAD->inv_NL[ b ] = silk_DIV32( silk_int32_MAX, psSilk_VAD->NL[ b ] );
-    }
-    psSilk_VAD->counter = 15;
-
-    /* init smoothed energy-to-noise ratio*/
-    for( b = 0; b < VAD_N_BANDS; b++ ) {
-        psSilk_VAD->NrgRatioSmth_Q8[ b ] = 100 * 256;       /* 100 * 256 --> 20 dB SNR */
-    }
-
-    return( ret );
-}
 
 /* Weighting factors for tilt measure */
 static const opus_int32 tiltWeights[ VAD_N_BANDS ] = { 30000, 6000, -12000, -12000 };
@@ -80,13 +17,7 @@ static const opus_int32 tiltWeights[ VAD_N_BANDS ] = { 30000, 6000, -12000, -120
 /***************************************/
 /* Get the speech activity level in Q8 */
 /***************************************/
-
-#if ENABLE_OPTIMIZE
-opus_int silk_VAD_GetSA_Q8_c
-#else
-opus_int silk_VAD_GetSA_Q8
-#endif
-(                                     /* O    Return value, 0 if success                  */
+opus_int silk_VAD_GetSA_Q8_sse(                                     /* O    Return value, 0 if success                  */
     silk_encoder_state          *psEncC,                        /* I/O  Encoder state                               */
     const opus_int16            pIn[]                           /* I    PCM input                                   */
 )
@@ -173,6 +104,35 @@ opus_int silk_VAD_GetSA_Q8
         Xnrg[ b ] = psSilk_VAD->XnrgSubfr[ b ];
         for( s = 0; s < VAD_INTERNAL_SUBFRAMES; s++ ) {
             sumSquared = 0;
+
+        #if ENABLE_OPTIMIZE
+            __m128i xmm_X, xmm_acc;
+
+            xmm_acc = _mm_setzero_si128();
+
+            for( i = 0; i < dec_subframe_length - 7; i += 8 )
+            {
+                xmm_X   = _mm_loadu_si128((__m128i*)&(X[ X_offset[ b ] + i + dec_subframe_offset ]));
+                xmm_X   = _mm_srai_epi16(xmm_X, 3);
+                xmm_X   = _mm_madd_epi16(xmm_X, xmm_X);
+                xmm_acc = _mm_add_epi32(xmm_acc, xmm_X);
+            }
+
+            xmm_acc = _mm_hadd_epi32(xmm_acc, xmm_acc);
+            xmm_acc = _mm_hadd_epi32(xmm_acc, xmm_acc);
+            sumSquared += _mm_cvtsi128_si32(xmm_acc);
+
+            for( ; i < dec_subframe_length; i++ ) {
+                /* The energy will be less than dec_subframe_length * ( silk_int16_MIN / 8 ) ^ 2.            */
+                /* Therefore we can accumulate with no risk of overflow (unless dec_subframe_length > 128)  */
+                x_tmp = silk_RSHIFT(
+                    X[ X_offset[ b ] + i + dec_subframe_offset ], 3 );
+                sumSquared = silk_SMLABB( sumSquared, x_tmp, x_tmp );
+
+                /* Safety check */
+                silk_assert( sumSquared >= 0 );
+            }
+        #else
             for( i = 0; i < dec_subframe_length; i++ ) {
                 /* The energy will be less than dec_subframe_length * ( silk_int16_MIN / 8 ) ^ 2.            */
                 /* Therefore we can accumulate with no risk of overflow (unless dec_subframe_length > 128)  */
@@ -183,6 +143,7 @@ opus_int silk_VAD_GetSA_Q8
                 /* Safety check */
                 silk_assert( sumSquared >= 0 );
             }
+        #endif
 
             /* Add/saturate summed energy of current subframe */
             if( s < VAD_INTERNAL_SUBFRAMES - 1 ) {
@@ -302,80 +263,4 @@ opus_int silk_VAD_GetSA_Q8
     return( ret );
 }
 
-
-#if ENABLE_OPTIMIZE
-opus_int (*silk_VAD_GetSA_Q8)(                                     /* O    Return value, 0 if success                  */
-    silk_encoder_state          *psEncC,                        /* I/O  Encoder state                               */
-    const opus_int16            pIn[]                           /* I    PCM input                                   */
-) = silk_VAD_GetSA_Q8_c;
 #endif
-
-/**************************/
-/* Noise level estimation */
-/**************************/
-#if ENABLE_OPTIMIZE
-OPUS_INLINE void silk_VAD_GetNoiseLevels(
-    const opus_int32            pX[ VAD_N_BANDS ],  /* I    subband energies                            */
-    silk_VAD_state              *psSilk_VAD         /* I/O  Pointer to Silk VAD state                   */
-)
-#else
-static OPUS_INLINE void silk_VAD_GetNoiseLevels(
-    const opus_int32            pX[ VAD_N_BANDS ],  /* I    subband energies                            */
-    silk_VAD_state              *psSilk_VAD         /* I/O  Pointer to Silk VAD state                   */
-)
-#endif
-{
-    opus_int   k;
-    opus_int32 nl, nrg, inv_nrg;
-    opus_int   coef, min_coef;
-
-    /* Initially faster smoothing */
-    if( psSilk_VAD->counter < 1000 ) { /* 1000 = 20 sec */
-        min_coef = silk_DIV32_16( silk_int16_MAX, silk_RSHIFT( psSilk_VAD->counter, 4 ) + 1 );
-    } else {
-        min_coef = 0;
-    }
-
-    for( k = 0; k < VAD_N_BANDS; k++ ) {
-        /* Get old noise level estimate for current band */
-        nl = psSilk_VAD->NL[ k ];
-        silk_assert( nl >= 0 );
-
-        /* Add bias */
-        nrg = silk_ADD_POS_SAT32( pX[ k ], psSilk_VAD->NoiseLevelBias[ k ] );
-        silk_assert( nrg > 0 );
-
-        /* Invert energies */
-        inv_nrg = silk_DIV32( silk_int32_MAX, nrg );
-        silk_assert( inv_nrg >= 0 );
-
-        /* Less update when subband energy is high */
-        if( nrg > silk_LSHIFT( nl, 3 ) ) {
-            coef = VAD_NOISE_LEVEL_SMOOTH_COEF_Q16 >> 3;
-        } else if( nrg < nl ) {
-            coef = VAD_NOISE_LEVEL_SMOOTH_COEF_Q16;
-        } else {
-            coef = silk_SMULWB( silk_SMULWW( inv_nrg, nl ), VAD_NOISE_LEVEL_SMOOTH_COEF_Q16 << 1 );
-        }
-
-        /* Initially faster smoothing */
-        coef = silk_max_int( coef, min_coef );
-
-        /* Smooth inverse energies */
-        psSilk_VAD->inv_NL[ k ] = silk_SMLAWB( psSilk_VAD->inv_NL[ k ], inv_nrg - psSilk_VAD->inv_NL[ k ], coef );
-        silk_assert( psSilk_VAD->inv_NL[ k ] >= 0 );
-
-        /* Compute noise level by inverting again */
-        nl = silk_DIV32( silk_int32_MAX, psSilk_VAD->inv_NL[ k ] );
-        silk_assert( nl >= 0 );
-
-        /* Limit noise levels (guarantee 7 bits of head room) */
-        nl = silk_min( nl, 0x00FFFFFF );
-
-        /* Store as part of state */
-        psSilk_VAD->NL[ k ] = nl;
-    }
-
-    /* Increment frame counter */
-    psSilk_VAD->counter++;
-}

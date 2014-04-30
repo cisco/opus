@@ -303,7 +303,11 @@ void silk_NLSF_VQ_weights_laroia(
 );
 
 /* Compute reflection coefficients from input signal */
+#if ENABLE_OPTIMIZE
+void (*silk_burg_modified)(
+#else
 void silk_burg_modified(
+#endif
     opus_int32                  *res_nrg,           /* O    Residual energy                                             */
     opus_int                    *res_nrg_Q,         /* O    Residual energy Q value                                     */
     opus_int32                  A_Q16[],            /* O    Prediction coefficients (length order)                      */
@@ -314,6 +318,20 @@ void silk_burg_modified(
     const opus_int              D,                  /* I    Order                                                       */
     int                         arch                /* I    Run-time architecture                                       */
 );
+
+#if ENABLE_OPTIMIZE
+void silk_burg_modified_sse(
+    opus_int32                  *res_nrg,           /* O    Residual energy                                             */
+    opus_int                    *res_nrg_Q,         /* O    Residual energy Q value                                     */
+    opus_int32                  A_Q16[],            /* O    Prediction coefficients (length order)                      */
+    const opus_int16            x[],                /* I    Input signal, length: nb_subfr * ( D + subfr_length )       */
+    const opus_int32            minInvGain_Q30,     /* I    Inverse of max prediction gain                              */
+    const opus_int              subfr_length,       /* I    Input signal subframe length (incl. D preceding samples)    */
+    const opus_int              nb_subfr,           /* I    Number of subframes stacked in x                            */
+    const opus_int              D,                  /* I    Order                                                       */
+    int                         arch                /* I    Run-time architecture                                       */
+);
+#endif
 
 /* Copy and multiply a vector by a constant */
 void silk_scale_copy_vector16(

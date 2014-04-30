@@ -156,4 +156,7 @@
 #define opus_uint64      unsigned long long
 #define opus_uint8       unsigned char
 
+#define likely(x)       __builtin_expect(!!(x), 1)
+#define unlikely(x)     __builtin_expect(!!(x), 0)
+
 #endif  /* OPUS_TYPES_H */

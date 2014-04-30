@@ -189,6 +189,10 @@ AC_ARG_ENABLE([rtcd],
     [AS_HELP_STRING([--disable-rtcd], [Disable run-time CPU capabilities detection])],,
     [enable_rtcd=yes])
 
+AC_ARG_ENABLE([intrinsics],
+    [AS_HELP_STRING([--enable-intrinsics], [enable intrinsics optimizations])],,
+    [enable_intrinsics=no])
+
 rtcd_support=no
 cpu_arm=no
 
@@ -356,6 +360,16 @@ AS_IF([test x"$enable_rtcd" = x"yes"],[
     rtcd_support="disabled"
 ])
 
+AS_IF([test x"$enable_intrinsics" = x"yes"],[
+AS_IF([test x"$host_cpu" = x"i386" -o x"$host_cpu" = x"i686" -o x"$host_cpu" = x"x86_64"],[
+    AS_IF([test x"$enable_rtcd" = x"yes" -a x],[
+        AC_DEFINE([ENABLE_OPTIMIZE], [1], [For x86 instrinsics optimize])
+        CFLAGS="$CFLAGS -msse4.2"
+        rtcd_support="yes"
+    ])
+])
+])
+
 AC_ARG_ENABLE([assertions],
     [AS_HELP_STRING([--enable-assertions],[enable additional software error checking])],,
     [enable_assertions=no])
@@ -451,6 +465,7 @@ AC_MSG_NOTICE([
       Fixed point debugging: ......... ${enable_fixed_point_debug}
       Inline Assembly Optimizations: . ${inline_optimization}
       External Assembly Optimizations: ${asm_optimization}
+      Intrinsics Optimizations.......: ${enable_intrinsics}
       Run-time CPU detection: ........ ${rtcd_support}
       Custom modes: .................. ${enable_custom_modes}
       Assertion checking: ............ ${enable_assertions}

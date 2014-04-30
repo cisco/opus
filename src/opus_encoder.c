@@ -187,6 +187,10 @@ int opus_encoder_init(OpusEncoder* st, opus_int32 Fs, int channels, int applicat
 
     st->Fs = Fs;
 
+#if ENABLE_OPTIMIZE
+    opus_cpu_select();
+#endif
+
     st->arch = opus_select_arch();
 
     ret = silk_InitEncoder( silk_enc, st->arch, &st->silk_mode );

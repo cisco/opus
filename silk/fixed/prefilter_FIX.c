@@ -45,7 +45,12 @@ static OPUS_INLINE void silk_prefilt_FIX(
     opus_int                    length                      /* I    Length of signals                   */
 );
 
-void silk_warped_LPC_analysis_filter_FIX(
+#if ENABLE_OPTIMIZE
+void silk_warped_LPC_analysis_filter_FIX_c
+#else
+void silk_warped_LPC_analysis_filter_FIX
+#endif
+(
           opus_int32            state[],                    /* I/O  State [order + 1]                   */
           opus_int32            res_Q2[],                   /* O    Residual signal [length]            */
     const opus_int16            coef_Q13[],                 /* I    Coefficients [order]                */
@@ -86,6 +91,19 @@ void silk_warped_LPC_analysis_filter_FIX(
         res_Q2[ n ] = silk_LSHIFT( (opus_int32)input[ n ], 2 ) - silk_RSHIFT_ROUND( acc_Q11, 9 );
     }
 }
+
+#if ENABLE_OPTIMIZE
+void (*silk_warped_LPC_analysis_filter_FIX)
+(
+          opus_int32            state[],                    /* I/O  State [order + 1]                   */
+          opus_int32            res_Q2[],                   /* O    Residual signal [length]            */
+    const opus_int16            coef_Q13[],                 /* I    Coefficients [order]                */
+    const opus_int16            input[],                    /* I    Input signal [length]               */
+    const opus_int16            lambda_Q16,                 /* I    Warping factor                      */
+    const opus_int              length,                     /* I    Length of input signal              */
+    const opus_int              order                       /* I    Filter order (even)                 */
+) = silk_warped_LPC_analysis_filter_FIX_c;
+#endif
 
 void silk_prefilter_FIX(
     silk_encoder_state_FIX          *psEnc,                                 /* I/O  Encoder state                                                               */

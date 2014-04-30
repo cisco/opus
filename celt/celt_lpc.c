@@ -88,7 +88,13 @@ int          p
 #endif
 }
 
-void celt_fir(const opus_val16 *_x,
+
+#if ENABLE_OPTIMIZE && defined(FIXED_POINT)
+void celt_fir_c
+#else
+void celt_fir
+#endif
+(const opus_val16 *_x,
          const opus_val16 *num,
          opus_val16 *_y,
          int N,
@@ -140,6 +146,16 @@ void celt_fir(const opus_val16 *_x,
 #endif
    RESTORE_STACK;
 }
+
+#if ENABLE_OPTIMIZE && defined(FIXED_POINT)
+void (*celt_fir)
+(const opus_val16 *_x,
+         const opus_val16 *num,
+         opus_val16 *_y,
+         int N,
+         int ord,
+         opus_val16 *mem) = celt_fir_c;
+#endif
 
 void celt_iir(const opus_val32 *_x,
          const opus_val16 *den,

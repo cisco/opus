@@ -12,7 +12,9 @@ celt/mathops.c \
 celt/mdct.c \
 celt/modes.c \
 celt/pitch.c \
+celt/x86/pitch_sse.c \
 celt/celt_lpc.c \
+celt/x86/celt_lpc_sse.c \
 celt/quant_bands.c \
 celt/rate.c \
 celt/vq.c

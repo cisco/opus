@@ -58,6 +58,30 @@ opus_int32 silk_NLSF_del_dec_quant(                             /* O    Returns 
 
     silk_assert( (NLSF_QUANT_DEL_DEC_STATES & (NLSF_QUANT_DEL_DEC_STATES-1)) == 0 );     /* must be power of two */
 
+#if ENABLE_OPTIMIZE
+    opus_int out0_Q10_table[2 * NLSF_QUANT_MAX_AMPLITUDE_EXT];
+    opus_int out1_Q10_table[2 * NLSF_QUANT_MAX_AMPLITUDE_EXT];
+
+    for (i = -NLSF_QUANT_MAX_AMPLITUDE_EXT; i <= NLSF_QUANT_MAX_AMPLITUDE_EXT-1; i++)
+    {
+        out0_Q10 = silk_LSHIFT( i, 10 );
+        out1_Q10 = silk_ADD16( out0_Q10, 1024 );
+        if( i > 0 ) {
+            out0_Q10 = silk_SUB16( out0_Q10, SILK_FIX_CONST( NLSF_QUANT_LEVEL_ADJ, 10 ) );
+            out1_Q10 = silk_SUB16( out1_Q10, SILK_FIX_CONST( NLSF_QUANT_LEVEL_ADJ, 10 ) );
+        } else if( i == 0 ) {
+            out1_Q10 = silk_SUB16( out1_Q10, SILK_FIX_CONST( NLSF_QUANT_LEVEL_ADJ, 10 ) );
+        } else if( i == -1 ) {
+            out0_Q10 = silk_ADD16( out0_Q10, SILK_FIX_CONST( NLSF_QUANT_LEVEL_ADJ, 10 ) );
+        } else {
+            out0_Q10 = silk_ADD16( out0_Q10, SILK_FIX_CONST( NLSF_QUANT_LEVEL_ADJ, 10 ) );
+            out1_Q10 = silk_ADD16( out1_Q10, SILK_FIX_CONST( NLSF_QUANT_LEVEL_ADJ, 10 ) );
+        }
+        out0_Q10_table[ i + NLSF_QUANT_MAX_AMPLITUDE_EXT ] = silk_SMULWB( (opus_int32)out0_Q10, quant_step_size_Q16 );
+        out1_Q10_table[ i + NLSF_QUANT_MAX_AMPLITUDE_EXT ] = silk_SMULWB( (opus_int32)out1_Q10, quant_step_size_Q16 );
+    }
+#endif
+
     nStates = 1;
     RD_Q25[ 0 ] = 0;
     prev_out_Q10[ 0 ] = 0;
@@ -73,6 +97,10 @@ opus_int32 silk_NLSF_del_dec_quant(                             /* O    Returns 
             ind[ j ][ i ] = (opus_int8)ind_tmp;
 
             /* compute outputs for ind_tmp and ind_tmp + 1 */
+        #if ENABLE_OPTIMIZE
+            out0_Q10 = out0_Q10_table[ ind_tmp + NLSF_QUANT_MAX_AMPLITUDE_EXT ];
+            out1_Q10 = out1_Q10_table[ ind_tmp + NLSF_QUANT_MAX_AMPLITUDE_EXT ];
+        #else
             out0_Q10 = silk_LSHIFT( ind_tmp, 10 );
             out1_Q10 = silk_ADD16( out0_Q10, 1024 );
             if( ind_tmp > 0 ) {
@@ -88,6 +116,7 @@ opus_int32 silk_NLSF_del_dec_quant(                             /* O    Returns 
             }
             out0_Q10  = silk_SMULWB( (opus_int32)out0_Q10, quant_step_size_Q16 );
             out1_Q10  = silk_SMULWB( (opus_int32)out1_Q10, quant_step_size_Q16 );
+        #endif
             out0_Q10  = silk_ADD16( out0_Q10, pred_Q10 );
             out1_Q10  = silk_ADD16( out1_Q10, pred_Q10 );
             prev_out_Q10[ j           ] = out0_Q10;

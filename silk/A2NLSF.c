@@ -65,6 +65,35 @@ static OPUS_INLINE opus_int32 silk_A2NLSF_eval_poly( /* return the polynomial ev
     const opus_int32    x,                      /* I    Evaluation point, Q12                   */
     const opus_int      dd                      /* I    Order                                   */
 )
+#if ENABLE_OPTIMIZE
+{
+    opus_int   n;
+    opus_int32 x_Q16, y32;
+
+    y32 = p[ dd ];                                  /* Q16 */
+    x_Q16 = silk_LSHIFT( x, 4 );
+
+    if (likely(8 == dd))
+    {
+        y32 = p[ 7 ] + (((opus_int64)y32 * x_Q16) >> 16);
+        y32 = p[ 6 ] + (((opus_int64)y32 * x_Q16) >> 16);
+        y32 = p[ 5 ] + (((opus_int64)y32 * x_Q16) >> 16);
+        y32 = p[ 4 ] + (((opus_int64)y32 * x_Q16) >> 16);
+        y32 = p[ 3 ] + (((opus_int64)y32 * x_Q16) >> 16);
+        y32 = p[ 2 ] + (((opus_int64)y32 * x_Q16) >> 16);
+        y32 = p[ 1 ] + (((opus_int64)y32 * x_Q16) >> 16);
+        y32 = p[ 0 ] + (((opus_int64)y32 * x_Q16) >> 16);
+    }
+    else
+    {
+        for( n = dd - 1; n >= 0; n-- ) {
+            y32 = silk_SMLAWW( p[ n ], y32, x_Q16 );    /* Q16 */
+        }
+    }
+
+    return y32;
+}
+#else
 {
     opus_int   n;
     opus_int32 x_Q16, y32;
@@ -76,6 +105,7 @@ static OPUS_INLINE opus_int32 silk_A2NLSF_eval_poly( /* return the polynomial ev
     }
     return y32;
 }
+#endif
 
 static OPUS_INLINE void silk_A2NLSF_init(
      const opus_int32    *a_Q16,

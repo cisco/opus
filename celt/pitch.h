@@ -142,6 +142,16 @@ static OPUS_INLINE void dual_inner_prod(const opus_val16 *x, const opus_val16 *y
 #endif
 
 #ifndef OVERRIDE_CELT_INNER_PROD
+#if ENABLE_OPTIMIZE && defined(FIXED_POINT)
+opus_val32 (*celt_inner_prod)(const opus_val16 *x, const opus_val16 *y,
+      int N);
+opus_val32 celt_inner_prod_sse4_1(const opus_val16 *x, const opus_val16 *y,
+      int N);
+opus_val32 celt_inner_prod_sse2(const opus_val16 *x, const opus_val16 *y,
+      int N);
+opus_val32 celt_inner_prod_c(const opus_val16 *x, const opus_val16 *y,
+      int N);
+#else
 static OPUS_INLINE opus_val32 celt_inner_prod(const opus_val16 *x, const opus_val16 *y,
       int N)
 {
@@ -151,6 +161,7 @@ static OPUS_INLINE opus_val32 celt_inner_prod(const opus_val16 *x, const opus_va
       xy = MAC16_16(xy, x[i], y[i]);
    return xy;
 }
+#endif
 #endif
 
 #ifdef FIXED_POINT
