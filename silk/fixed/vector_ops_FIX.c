@@ -86,7 +86,13 @@ opus_int32 silk_inner_prod_aligned(
 #endif
 }
 
-opus_int64 silk_inner_prod16_aligned_64(
+
+#if ENABLE_OPTIMIZE
+opus_int64 silk_inner_prod16_aligned_64_c
+#else
+opus_int64 silk_inner_prod16_aligned_64
+#endif
+(
     const opus_int16            *inVec1,            /*    I input vector 1                                              */
     const opus_int16            *inVec2,            /*    I input vector 2                                              */
     const opus_int              len                 /*    I vector lengths                                              */
@@ -99,3 +105,14 @@ opus_int64 silk_inner_prod16_aligned_64(
     }
     return sum;
 }
+
+
+#if ENABLE_OPTIMIZE
+opus_int64 (*silk_inner_prod16_aligned_64)
+(
+    const opus_int16            *inVec1,            /*    I input vector 1                                              */
+    const opus_int16            *inVec2,            /*    I input vector 2                                              */
+    const opus_int              len                 /*    I vector lengths                                              */
+) = silk_inner_prod16_aligned_64_c;
+#endif
+

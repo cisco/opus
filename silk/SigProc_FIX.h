@@ -353,11 +353,13 @@ void silk_scale_vector32_Q26_lshift_18(
 /********************************************************************/
 
 /*    return sum( inVec1[i] * inVec2[i] ) */
+
 opus_int32 silk_inner_prod_aligned(
     const opus_int16 *const     inVec1,             /*    I input vector 1                                              */
     const opus_int16 *const     inVec2,             /*    I input vector 2                                              */
     const opus_int              len                 /*    I vector lengths                                              */
 );
+
 
 opus_int32 silk_inner_prod_aligned_scale(
     const opus_int16 *const     inVec1,             /*    I input vector 1                                              */
@@ -366,11 +368,24 @@ opus_int32 silk_inner_prod_aligned_scale(
     const opus_int              len                 /*    I vector lengths                                              */
 );
 
-opus_int64 silk_inner_prod16_aligned_64(
+#if ENABLE_OPTIMIZE
+opus_int64 (*silk_inner_prod16_aligned_64)
+#else
+opus_int64 silk_inner_prod16_aligned_64
+#endif
+(
     const opus_int16            *inVec1,            /*    I input vector 1                                              */
     const opus_int16            *inVec2,            /*    I input vector 2                                              */
     const opus_int              len                 /*    I vector lengths                                              */
 );
+
+#if ENABLE_OPTIMIZE
+opus_int64 silk_inner_prod16_aligned_64_sse(
+    const opus_int16            *inVec1,            /*    I input vector 1                                              */
+    const opus_int16            *inVec2,            /*    I input vector 2                                              */
+    const opus_int              len                 /*    I vector lengths                                              */
+);
+#endif
 
 /********************************************************************/
 /*                                MACROS                            */

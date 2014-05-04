@@ -148,10 +148,13 @@ void opus_cpu_select(void)
             silk_burg_modified = silk_burg_modified_sse;
             celt_fir = celt_fir_sse;
             celt_inner_prod = celt_inner_prod_sse4_1;
+            silk_inner_prod16_aligned_64 = silk_inner_prod16_aligned_64_sse;
+            xcorr_kernel = xcorr_kernel_sse4_1;
         }
         else if (cpu_feature.HW_SSE2)
         {
             celt_inner_prod = celt_inner_prod_sse2;
+            xcorr_kernel = xcorr_kernel_sse2;
         }
 #endif
 

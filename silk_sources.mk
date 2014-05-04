@@ -106,6 +106,7 @@ silk/fixed/x86/burg_modified_FIX_sse.c \
 silk/fixed/k2a_FIX.c \
 silk/fixed/k2a_Q16_FIX.c \
 silk/fixed/pitch_analysis_core_FIX.c \
+silk/fixed/x86/vector_ops_FIX_sse.c \
 silk/fixed/vector_ops_FIX.c \
 silk/fixed/schur64_FIX.c \
 silk/fixed/schur_FIX.c 

@@ -42,6 +42,10 @@
 #include "mathops.h"
 #include "celt_lpc.h"
 
+#if ENABLE_OPTIMIZE
+void (*xcorr_kernel)(const opus_val16 * x, const opus_val16 * y, opus_val32 sum[4], int len) = xcorr_kernel_c;
+#endif
+
 static void find_best_pitch(opus_val32 *xcorr, opus_val16 *y, int len,
                             int max_pitch, int *best_pitch
 #ifdef FIXED_POINT
