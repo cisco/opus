@@ -105,7 +105,6 @@ opus_int silk_VAD_GetSA_Q8_sse(                                     /* O    Retu
         for( s = 0; s < VAD_INTERNAL_SUBFRAMES; s++ ) {
             sumSquared = 0;
 
-        #if ENABLE_OPTIMIZE
             __m128i xmm_X, xmm_acc;
 
             xmm_acc = _mm_setzero_si128();
@@ -132,18 +131,6 @@ opus_int silk_VAD_GetSA_Q8_sse(                                     /* O    Retu
                 /* Safety check */
                 silk_assert( sumSquared >= 0 );
             }
-        #else
-            for( i = 0; i < dec_subframe_length; i++ ) {
-                /* The energy will be less than dec_subframe_length * ( silk_int16_MIN / 8 ) ^ 2.            */
-                /* Therefore we can accumulate with no risk of overflow (unless dec_subframe_length > 128)  */
-                x_tmp = silk_RSHIFT(
-                    X[ X_offset[ b ] + i + dec_subframe_offset ], 3 );
-                sumSquared = silk_SMLABB( sumSquared, x_tmp, x_tmp );
-
-                /* Safety check */
-                silk_assert( sumSquared >= 0 );
-            }
-        #endif
 
             /* Add/saturate summed energy of current subframe */
             if( s < VAD_INTERNAL_SUBFRAMES - 1 ) {

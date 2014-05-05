@@ -102,28 +102,14 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ecintrin.h"
 
 static OPUS_INLINE opus_int32 silk_CLZ16(opus_int16 in16)
-#if ENABLE_OPTIMIZE
-{
-    if (in16 == 0) return 16;
-    return (__builtin_clz(((opus_int32)in16) & 0x0000FFFF) - 16);
-}
-#else
 {
     return 32 - EC_ILOG(in16<<16|0x8000);
 }
-#endif
 
 static OPUS_INLINE opus_int32 silk_CLZ32(opus_int32 in32)
-#if ENABLE_OPTIMIZE
-{
-    if (in32 == 0) return 32;
-    return __builtin_clz(in32);
-}
-#else
 {
     return in32 ? 32 - EC_ILOG(in32) : 32;
 }
-#endif
 
 /* Row based */
 #define matrix_ptr(Matrix_base_adr, row, column, N) \
