@@ -44,7 +44,8 @@ void silk_LPC_analysis_filter(
     const opus_int16            *in,                /* I    Input signal                                                */
     const opus_int16            *B,                 /* I    MA prediction coefficients, Q12 [order]                     */
     const opus_int32            len,                /* I    Signal length                                               */
-    const opus_int32            d                   /* I    Filter order                                                */
+    const opus_int32            d,                  /* I    Filter order                                                */
+    const int                   arch                /* I    Run-time architecture                                       */
 )
 {
     opus_int   j;
@@ -69,7 +70,7 @@ void silk_LPC_analysis_filter(
     for (j=0;j<d;j++) {
         mem[ j ] = in[ d - j - 1 ];
     }
-    celt_fir( in + d, num, out + d, len - d, d, mem );
+    celt_fir( in + d, num, out + d, len - d, d, mem, arch );
     for ( j = 0; j < d; j++ ) {
         out[ j ] = 0;
     }

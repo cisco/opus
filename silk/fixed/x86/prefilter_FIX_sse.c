@@ -1,15 +1,19 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-#if ENABLE_OPTIMIZE
-#include "xmmintrin.h"
-#include "emmintrin.h"
-#include "smmintrin.h"
+
+#if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+
+#pragma GCC target ("sse4.1")
+
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#include <smmintrin.h>
 #include "main.h"
 
-void silk_warped_LPC_analysis_filter_FIX_sse(
-          opus_int32            state[],                    /* I/O  State [order + 1]                   */
-          opus_int32            res_Q2[],                   /* O    Residual signal [length]            */
+void silk_warped_LPC_analysis_filter_FIX_sse4_1(
+    opus_int32                  state[],                    /* I/O  State [order + 1]                   */
+    opus_int32                  res_Q2[],                   /* O    Residual signal [length]            */
     const opus_int16            coef_Q13[],                 /* I    Coefficients [order]                */
     const opus_int16            input[],                    /* I    Input signal [length]               */
     const opus_int16            lambda_Q16,                 /* I    Warping factor                      */
@@ -130,4 +134,6 @@ void silk_warped_LPC_analysis_filter_FIX_sse(
         res_Q2[ n ] = silk_LSHIFT( (opus_int32)input[ n ], 2 ) - silk_RSHIFT_ROUND( acc_Q11, 9 );
     }
 }
+
 #endif
+

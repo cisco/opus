@@ -5,8 +5,9 @@
 #endif
 
 
-#if ENABLE_OPTIMIZE
+#if defined(FIXED_POINT) && defined(OPUS_HAVE_RTCD)
 
+#include "cpu_support.h"
 #include "macros.h"
 #include "main.h"
 #include "pitch.h"
@@ -39,7 +40,6 @@ void cpuid(int CPUInfo[4],int InfoType)
 
 #include "SigProc_FIX.h"
 #include "celt_lpc.h"
-//#include "x86/vector_ops_FIX_sse.h"
 
 typedef struct CPU_Feature{
     //  Misc.
@@ -78,6 +78,10 @@ typedef struct CPU_Feature{
 
 static CPU_Feature cpu_feature;
 static bool cpu_selected = false;
+
+#define OPUS_DEFAULT 0
+#define OPUS_SSE2    1
+#define OPUS_SSE4_1  2
 
 static void opus_cpu_feature_check(void)
 {
@@ -132,34 +136,26 @@ static void opus_cpu_feature_check(void)
 }
 
 
-void opus_cpu_select(void)
+int opus_select_arch(void)
 {
+    static int arch = OPUS_DEFAULT;
     if( !cpu_selected )
     {
         opus_cpu_feature_check();
-#if defined(FIXED_POINT)
-        if ( cpu_feature.HW_SSE42)
+        
+        if ( cpu_feature.HW_SSE41)
         {
-            silk_VQ_WMat_EC = silk_VQ_WMat_EC_sse;
-            silk_warped_LPC_analysis_filter_FIX = silk_warped_LPC_analysis_filter_FIX_sse;
-            silk_NSQ = silk_NSQ_sse;
-            silk_NSQ_del_dec = silk_NSQ_del_dec_sse;
-            silk_VAD_GetSA_Q8 = silk_VAD_GetSA_Q8_sse;
-            silk_burg_modified = silk_burg_modified_sse;
-            celt_fir = celt_fir_sse;
-            celt_inner_prod = celt_inner_prod_sse4_1;
-            silk_inner_prod16_aligned_64 = silk_inner_prod16_aligned_64_sse;
-            xcorr_kernel = xcorr_kernel_sse4_1;
+            arch = OPUS_SSE4_1;
         }
         else if (cpu_feature.HW_SSE2)
         {
-            celt_inner_prod = celt_inner_prod_sse2;
-            xcorr_kernel = xcorr_kernel_sse2;
+            arch = OPUS_SSE2;
         }
-#endif
 
         cpu_selected = true;
     }
+
+    return arch;
 }
 
 #endif

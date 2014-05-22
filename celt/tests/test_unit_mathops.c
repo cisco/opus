@@ -35,6 +35,9 @@
 #endif
 
 #define CELT_C
+#include <stdio.h>
+#include <math.h>
+
 
 #include "mathops.c"
 #include "entenc.c"
@@ -45,8 +48,9 @@
 #include "laplace.c"
 #include "vq.c"
 #include "cwrs.c"
-#include <stdio.h>
-#include <math.h>
+
+#include "pitch.c"
+#include "celt_lpc.c"
 
 #ifdef FIXED_POINT
 #define WORD "%d"
@@ -258,6 +262,12 @@ void testilog2(void)
    }
 }
 #endif
+
+#if (defined(HAVE_SSE4_1) || defined(HAVE_SSE2)) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+#include "x86/pitch_sse.c"
+#include "x86/celt_lpc_sse.c"
+#include "x86/x86_celt_map.c"
+# endif
 
 int main(void)
 {

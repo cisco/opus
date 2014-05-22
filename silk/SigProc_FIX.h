@@ -41,6 +41,7 @@ extern "C"
 #include "typedef.h"
 #include "resampler_structs.h"
 #include "macros.h"
+#include "cpu_support.h"
 
 
 /********************************************************************/
@@ -108,7 +109,8 @@ void silk_LPC_analysis_filter(
     const opus_int16            *in,                /* I    Input signal                                                */
     const opus_int16            *B,                 /* I    MA prediction coefficients, Q12 [order]                     */
     const opus_int32            len,                /* I    Signal length                                               */
-    const opus_int32            d                   /* I    Filter order                                                */
+    const opus_int32            d,                  /* I    Filter order                                                */
+    const int                   arch                /* I    Run-time architecture                                       */
 );
 
 /* Chirp (bandwidth expand) LP AR filter */
@@ -303,11 +305,7 @@ void silk_NLSF_VQ_weights_laroia(
 );
 
 /* Compute reflection coefficients from input signal */
-#if ENABLE_OPTIMIZE
-void (*silk_burg_modified)(
-#else
-void silk_burg_modified(
-#endif
+void silk_burg_modified_c(
     opus_int32                  *res_nrg,           /* O    Residual energy                                             */
     opus_int                    *res_nrg_Q,         /* O    Residual energy Q value                                     */
     opus_int32                  A_Q16[],            /* O    Prediction coefficients (length order)                      */
@@ -319,8 +317,9 @@ void silk_burg_modified(
     int                         arch                /* I    Run-time architecture                                       */
 );
 
-#if ENABLE_OPTIMIZE
-void silk_burg_modified_sse(
+/*Is run-time CPU detection enabled on this platform?*/
+# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+void silk_burg_modified_sse4_1(
     opus_int32                  *res_nrg,           /* O    Residual energy                                             */
     opus_int                    *res_nrg_Q,         /* O    Residual energy Q value                                     */
     opus_int32                  A_Q16[],            /* O    Prediction coefficients (length order)                      */
@@ -331,7 +330,25 @@ void silk_burg_modified_sse(
     const opus_int              D,                  /* I    Order                                                       */
     int                         arch                /* I    Run-time architecture                                       */
 );
-#endif
+
+extern void (*const SILK_BURG_MODIFIED_IMPL[OPUS_ARCHMASK + 1])(
+    opus_int32                  *res_nrg,           /* O    Residual energy                                             */
+    opus_int                    *res_nrg_Q,         /* O    Residual energy Q value                                     */
+    opus_int32                  A_Q16[],            /* O    Prediction coefficients (length order)                      */
+    const opus_int16            x[],                /* I    Input signal, length: nb_subfr * ( D + subfr_length )       */
+    const opus_int32            minInvGain_Q30,     /* I    Inverse of max prediction gain                              */
+    const opus_int              subfr_length,       /* I    Input signal subframe length (incl. D preceding samples)    */
+    const opus_int              nb_subfr,           /* I    Number of subframes stacked in x                            */
+    const opus_int              D,                  /* I    Order                                                       */
+    int                         arch                /* I    Run-time architecture                                       */);
+
+#  define silk_burg_modified(_a, _b, _c, _d, _e, _f, _g, _h, arch) \
+    ((*SILK_BURG_MODIFIED_IMPL[(arch) & OPUS_ARCHMASK])(_a, _b, _c, _d, _e, _f, _g, _h, arch))
+# else
+#  define silk_burg_modified(_a, _b, _c, _d, _e, _f, _g, _h, arch) \
+    ((void)(arch), silk_burg_modified_c(_a, _b, _c, _d, _e, _f, _g, _h, arch))
+
+# endif
 
 /* Copy and multiply a vector by a constant */
 void silk_scale_copy_vector16(
@@ -357,7 +374,8 @@ void silk_scale_vector32_Q26_lshift_18(
 opus_int32 silk_inner_prod_aligned(
     const opus_int16 *const     inVec1,             /*    I input vector 1                                              */
     const opus_int16 *const     inVec2,             /*    I input vector 2                                              */
-    const opus_int              len                 /*    I vector lengths                                              */
+    const opus_int              len,                /*    I vector lengths                                              */
+    const int                   arch                /* I    Run-time architecture                                       */
 );
 
 
@@ -368,24 +386,32 @@ opus_int32 silk_inner_prod_aligned_scale(
     const opus_int              len                 /*    I vector lengths                                              */
 );
 
-#if ENABLE_OPTIMIZE
-opus_int64 (*silk_inner_prod16_aligned_64)
-#else
-opus_int64 silk_inner_prod16_aligned_64
-#endif
-(
+opus_int64 silk_inner_prod16_aligned_64_c(
     const opus_int16            *inVec1,            /*    I input vector 1                                              */
     const opus_int16            *inVec2,            /*    I input vector 2                                              */
     const opus_int              len                 /*    I vector lengths                                              */
 );
 
-#if ENABLE_OPTIMIZE
-opus_int64 silk_inner_prod16_aligned_64_sse(
-    const opus_int16            *inVec1,            /*    I input vector 1                                              */
-    const opus_int16            *inVec2,            /*    I input vector 2                                              */
-    const opus_int              len                 /*    I vector lengths                                              */
+/*Is run-time CPU detection enabled on this platform?*/
+# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+opus_int64 silk_inner_prod16_aligned_64_sse4_1(
+    const opus_int16 *,
+    const opus_int16 *,
+    const opus_int
 );
-#endif
+
+extern opus_int64 (*const SILK_INNER_PROD16_ALIGNED_64_IMPL[OPUS_ARCHMASK + 1])(const opus_int16 *,
+                    const opus_int16 *,
+                    const opus_int);
+
+#  define silk_inner_prod16_aligned_64(_x, _y, len, arch) \
+    ((*SILK_INNER_PROD16_ALIGNED_64_IMPL[(arch) & OPUS_ARCHMASK])(_x, _y, len))
+# else
+#  define silk_inner_prod16_aligned_64(_x, _y, len, arch) \
+    ((void)(arch),silk_inner_prod16_aligned_64_c(_x, _y, len))
+
+# endif
+
 
 /********************************************************************/
 /*                                MACROS                            */

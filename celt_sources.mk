@@ -15,6 +15,7 @@ celt/pitch.c \
 celt/x86/pitch_sse.c \
 celt/celt_lpc.c \
 celt/x86/celt_lpc_sse.c \
+celt/x86/x86_celt_map.c \
 celt/quant_bands.c \
 celt/rate.c \
 celt/vq.c

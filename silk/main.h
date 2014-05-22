@@ -208,16 +208,12 @@ void silk_quant_LTP_gains(
     const opus_int32            W_Q18[ MAX_NB_SUBFR*LTP_ORDER*LTP_ORDER ],  /* I    Error Weights in Q18            */
     opus_int                    mu_Q9,                                      /* I    Mu value (R/D tradeoff)         */
     opus_int                    lowComplexity,                              /* I    Flag for low complexity         */
-    const opus_int              nb_subfr                                    /* I    number of subframes             */
+    const opus_int              nb_subfr,                                   /* I    number of subframes             */
+    const int                   arch                                        /* I    Run-time architecture           */
 );
 
 /* Entropy constrained matrix-weighted VQ, for a single input data vector */
-#if ENABLE_OPTIMIZE
-void (*silk_VQ_WMat_EC)
-#else
-void silk_VQ_WMat_EC
-#endif
-(
+void silk_VQ_WMat_EC_c(
     opus_int8                   *ind,                           /* O    index of best codebook vector               */
     opus_int32                  *rate_dist_Q14,                 /* O    best weighted quant error + mu * rate       */
     opus_int                    *gain_Q7,                       /* O    sum of absolute LTP coefficients            */
@@ -231,13 +227,9 @@ void silk_VQ_WMat_EC
     opus_int                    L                               /* I    number of vectors in codebook               */
 );
 
-#if ENABLE_OPTIMIZE
-
-/* get cpu info in run time */
-void opus_cpu_select(void);
-
-/* Entropy constrained matrix-weighted VQ, for a single input data vector */
-void silk_VQ_WMat_EC_sse(
+/*Is run-time CPU detection enabled on this platform?*/
+# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+void silk_VQ_WMat_EC_sse4_1(
     opus_int8                   *ind,                           /* O    index of best codebook vector               */
     opus_int32                  *rate_dist_Q14,                 /* O    best weighted quant error + mu * rate       */
     opus_int                    *gain_Q7,                       /* O    sum of absolute LTP coefficients            */
@@ -251,27 +243,33 @@ void silk_VQ_WMat_EC_sse(
     opus_int                    L                               /* I    number of vectors in codebook               */
 );
 
-void silk_warped_LPC_analysis_filter_FIX_sse(
-          opus_int32            state[],                    /* I/O  State [order + 1]                   */
-          opus_int32            res_Q2[],                   /* O    Residual signal [length]            */
-    const opus_int16            coef_Q13[],                 /* I    Coefficients [order]                */
-    const opus_int16            input[],                    /* I    Input signal [length]               */
-    const opus_int16            lambda_Q16,                 /* I    Warping factor                      */
-    const opus_int              length,                     /* I    Length of input signal              */
-    const opus_int              order                       /* I    Filter order (even)                 */
+extern void (*const SILK_VQ_WMAT_EC_IMPL[OPUS_ARCHMASK + 1])(
+    opus_int8                   *ind,                           /* O    index of best codebook vector               */
+    opus_int32                  *rate_dist_Q14,                 /* O    best weighted quant error + mu * rate       */
+    opus_int                    *gain_Q7,                       /* O    sum of absolute LTP coefficients            */
+    const opus_int16            *in_Q14,                        /* I    input vector to be quantized                */
+    const opus_int32            *W_Q18,                         /* I    weighting matrix                            */
+    const opus_int8             *cb_Q7,                         /* I    codebook                                    */
+    const opus_uint8            *cb_gain_Q7,                    /* I    codebook effective gain                     */
+    const opus_uint8            *cl_Q5,                         /* I    code length for each codebook vector        */
+    const opus_int              mu_Q9,                          /* I    tradeoff betw. weighted error and rate      */
+    const opus_int32            max_gain_Q7,                    /* I    maximum sum of absolute LTP coefficients    */
+    opus_int                    L                               /* I    number of vectors in codebook               */
 );
-#endif
+
+#  define silk_VQ_WMat_EC(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, arch) \
+    ((*SILK_VQ_WMAT_EC_IMPL[(arch) & OPUS_ARCHMASK])(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k))
+# else
+#  define silk_VQ_WMat_EC(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, arch) \
+    ((void)(arch),silk_VQ_WMat_EC_c(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k))
+
+# endif
 
 /************************************/
 /* Noise shaping quantization (NSQ) */
 /************************************/
 
-#if ENABLE_OPTIMIZE
-void (*silk_NSQ)
-#else
-void silk_NSQ
-#endif
-(
+void silk_NSQ_c(
     const silk_encoder_state    *psEncC,                                    /* I/O  Encoder State                   */
     silk_nsq_state              *NSQ,                                       /* I/O  NSQ state                       */
     SideInfoIndices             *psIndices,                                 /* I/O  Quantization Indices            */
@@ -289,8 +287,9 @@ void silk_NSQ
     const opus_int              LTP_scale_Q14                               /* I    LTP state scaling               */
 );
 
-#if ENABLE_OPTIMIZE
-void silk_NSQ_sse(
+/*Is run-time CPU detection enabled on this platform?*/
+# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+void silk_NSQ_sse4_1(
     const silk_encoder_state    *psEncC,                                    /* I/O  Encoder State                   */
     silk_nsq_state              *NSQ,                                       /* I/O  NSQ state                       */
     SideInfoIndices             *psIndices,                                 /* I/O  Quantization Indices            */
@@ -307,16 +306,35 @@ void silk_NSQ_sse(
     const opus_int              Lambda_Q10,                                 /* I    Rate/distortion tradeoff        */
     const opus_int              LTP_scale_Q14                               /* I    LTP state scaling               */
 );
-#endif
+
+extern void (*const SILK_NSQ_IMPL[OPUS_ARCHMASK + 1])(
+    const silk_encoder_state    *psEncC,                                    /* I/O  Encoder State                   */
+    silk_nsq_state              *NSQ,                                       /* I/O  NSQ state                       */
+    SideInfoIndices             *psIndices,                                 /* I/O  Quantization Indices            */
+    const opus_int32            x_Q3[],                                     /* I    Prefiltered input signal        */
+    opus_int8                   pulses[],                                   /* O    Quantized pulse signal          */
+    const opus_int16            PredCoef_Q12[ 2 * MAX_LPC_ORDER ],          /* I    Short term prediction coefs     */
+    const opus_int16            LTPCoef_Q14[ LTP_ORDER * MAX_NB_SUBFR ],    /* I    Long term prediction coefs      */
+    const opus_int16            AR2_Q13[ MAX_NB_SUBFR * MAX_SHAPE_LPC_ORDER ], /* I Noise shaping coefs             */
+    const opus_int              HarmShapeGain_Q14[ MAX_NB_SUBFR ],          /* I    Long term shaping coefs         */
+    const opus_int              Tilt_Q14[ MAX_NB_SUBFR ],                   /* I    Spectral tilt                   */
+    const opus_int32            LF_shp_Q14[ MAX_NB_SUBFR ],                 /* I    Low frequency shaping coefs     */
+    const opus_int32            Gains_Q16[ MAX_NB_SUBFR ],                  /* I    Quantization step sizes         */
+    const opus_int              pitchL[ MAX_NB_SUBFR ],                     /* I    Pitch lags                      */
+    const opus_int              Lambda_Q10,                                 /* I    Rate/distortion tradeoff        */
+    const opus_int              LTP_scale_Q14                               /* I    LTP state scaling               */
+);
+
+#  define silk_NSQ(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, arch) \
+    ((*SILK_NSQ_IMPL[(arch) & OPUS_ARCHMASK])(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o))
+# else
+#  define silk_NSQ(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, arch) \
+    ((void)(arch),silk_NSQ_c(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o))
+
+# endif
 
 /* Noise shaping using delayed decision */
-
-#if ENABLE_OPTIMIZE
-void (*silk_NSQ_del_dec)
-#else
-void silk_NSQ_del_dec
-#endif
-(
+void silk_NSQ_del_dec_c(
     const silk_encoder_state    *psEncC,                                    /* I/O  Encoder State                   */
     silk_nsq_state              *NSQ,                                       /* I/O  NSQ state                       */
     SideInfoIndices             *psIndices,                                 /* I/O  Quantization Indices            */
@@ -334,8 +352,9 @@ void silk_NSQ_del_dec
     const opus_int              LTP_scale_Q14                               /* I    LTP state scaling               */
 );
 
-#if ENABLE_OPTIMIZE
-void silk_NSQ_del_dec_sse(
+/*Is run-time CPU detection enabled on this platform?*/
+# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+void silk_NSQ_del_dec_sse4_1(
     const silk_encoder_state    *psEncC,                                    /* I/O  Encoder State                   */
     silk_nsq_state              *NSQ,                                       /* I/O  NSQ state                       */
     SideInfoIndices             *psIndices,                                 /* I/O  Quantization Indices            */
@@ -352,23 +371,34 @@ void silk_NSQ_del_dec_sse(
     const opus_int              Lambda_Q10,                                 /* I    Rate/distortion tradeoff        */
     const opus_int              LTP_scale_Q14                               /* I    LTP state scaling               */
 );
-#endif
 
-#if ENABLE_OPTIMIZE
-void silk_nsq_scale_states(
-    const silk_encoder_state *psEncC,           /* I    Encoder State                   */
-    silk_nsq_state      *NSQ,                   /* I/O  NSQ state                       */
-    const opus_int32    x_Q3[],                 /* I    input in Q3                     */
-    opus_int32          x_sc_Q10[],             /* O    input scaled with 1/Gain        */
-    const opus_int16    sLTP[],                 /* I    re-whitened LTP state in Q0     */
-    opus_int32          sLTP_Q15[],             /* O    LTP state matching scaled input */
-    opus_int            subfr,                  /* I    subframe number                 */
-    const opus_int      LTP_scale_Q14,          /* I                                    */
-    const opus_int32    Gains_Q16[ MAX_NB_SUBFR ], /* I                                 */
-    const opus_int      pitchL[ MAX_NB_SUBFR ], /* I    Pitch lag                       */
-    const opus_int      signal_type             /* I    Signal type                     */
+extern void (*const SILK_NSQ_DEL_DEC_IMPL[OPUS_ARCHMASK + 1])(
+    const silk_encoder_state    *psEncC,                                    /* I/O  Encoder State                   */
+    silk_nsq_state              *NSQ,                                       /* I/O  NSQ state                       */
+    SideInfoIndices             *psIndices,                                 /* I/O  Quantization Indices            */
+    const opus_int32            x_Q3[],                                     /* I    Prefiltered input signal        */
+    opus_int8                   pulses[],                                   /* O    Quantized pulse signal          */
+    const opus_int16            PredCoef_Q12[ 2 * MAX_LPC_ORDER ],          /* I    Short term prediction coefs     */
+    const opus_int16            LTPCoef_Q14[ LTP_ORDER * MAX_NB_SUBFR ],    /* I    Long term prediction coefs      */
+    const opus_int16            AR2_Q13[ MAX_NB_SUBFR * MAX_SHAPE_LPC_ORDER ], /* I Noise shaping coefs             */
+    const opus_int              HarmShapeGain_Q14[ MAX_NB_SUBFR ],          /* I    Long term shaping coefs         */
+    const opus_int              Tilt_Q14[ MAX_NB_SUBFR ],                   /* I    Spectral tilt                   */
+    const opus_int32            LF_shp_Q14[ MAX_NB_SUBFR ],                 /* I    Low frequency shaping coefs     */
+    const opus_int32            Gains_Q16[ MAX_NB_SUBFR ],                  /* I    Quantization step sizes         */
+    const opus_int              pitchL[ MAX_NB_SUBFR ],                     /* I    Pitch lags                      */
+    const opus_int              Lambda_Q10,                                 /* I    Rate/distortion tradeoff        */
+    const opus_int              LTP_scale_Q14                               /* I    LTP state scaling               */
 );
 
+#  define silk_NSQ_del_dec(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, arch) \
+    ((*SILK_NSQ_DEL_DEC_IMPL[(arch) & OPUS_ARCHMASK])(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o))
+# else
+#  define silk_NSQ_del_dec(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, arch) \
+    ((void)(arch),silk_NSQ_del_dec_c(_a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o))
+
+# endif
+
+# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
 void silk_noise_shape_quantizer(
     silk_nsq_state      *NSQ,                   /* I/O  NSQ state                       */
     opus_int            signalType,             /* I    Signal type                     */
@@ -401,20 +431,16 @@ opus_int silk_VAD_Init(                                         /* O    Return v
 );
 
 /* Get speech activity level in Q8 */
-#if ENABLE_OPTIMIZE
-opus_int (*silk_VAD_GetSA_Q8)(
-#else
-opus_int silk_VAD_GetSA_Q8(
-#endif
+opus_int silk_VAD_GetSA_Q8_c(
                                      /* O    Return value, 0 if success                  */
     silk_encoder_state          *psEncC,                        /* I/O  Encoder state                               */
     const opus_int16            pIn[]                           /* I    PCM input                                   */
 );
 
-#if ENABLE_OPTIMIZE
-opus_int silk_VAD_GetSA_Q8_sse(                                     /* O    Return value, 0 if success                  */
-    silk_encoder_state          *psEncC,                        /* I/O  Encoder state                               */
-    const opus_int16            pIn[]                           /* I    PCM input                                   */
+# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+opus_int silk_VAD_GetSA_Q8_sse4_1(
+    silk_encoder_state *,
+    const opus_int16 *
 );
 
 /**************************/
@@ -424,6 +450,15 @@ void silk_VAD_GetNoiseLevels(
     const opus_int32            pX[ VAD_N_BANDS ],  /* I    subband energies                            */
     silk_VAD_state              *psSilk_VAD         /* I/O  Pointer to Silk VAD state                   */
 );
+
+extern opus_int (*const SILK_VAD_GETSA_Q8_IMPL[OPUS_ARCHMASK + 1])
+    (silk_encoder_state *,
+     const opus_int16 *);
+#  define silk_VAD_GetSA_Q8(_x, _y, arch) \
+     ((*SILK_VAD_GETSA_Q8_IMPL[(arch) & OPUS_ARCHMASK])(_x, _y))
+# else
+#  define silk_VAD_GetSA_Q8(_x, _y, arch) \
+    ((void)(arch),silk_VAD_GetSA_Q8_c(_x, _y))
 #endif
 
 /* Low-pass filter with variable cutoff frequency based on  */
@@ -519,7 +554,8 @@ opus_int silk_decode_frame(
     opus_int16                  pOut[],                         /* O    Pointer to output speech frame              */
     opus_int32                  *pN,                            /* O    Pointer to size of output frame             */
     opus_int                    lostFlag,                       /* I    0: no loss, 1 loss, 2 decode fec            */
-    opus_int                    condCoding                      /* I    The type of conditional coding to use       */
+    opus_int                    condCoding,                     /* I    The type of conditional coding to use       */
+    const int                   arch                            /* I    Run-time architecture                       */
 );
 
 /* Decode indices from bitstream */
@@ -543,7 +579,8 @@ void silk_decode_core(
     silk_decoder_state          *psDec,                         /* I/O  Decoder state                               */
     silk_decoder_control        *psDecCtrl,                     /* I    Decoder control                             */
     opus_int16                  xq[],                           /* O    Decoded speech                              */
-    const opus_int16            pulses[ MAX_FRAME_LENGTH ]      /* I    Pulse signal                                */
+    const opus_int16            pulses[ MAX_FRAME_LENGTH ],     /* I    Pulse signal                                */
+    const int                   arch                            /* I    Run-time architecture                       */
 );
 
 /* Decode quantization indices of excitation (Shell coding) */
@@ -581,9 +618,7 @@ void silk_encode_indices(
     opus_int                    condCoding                      /* I    The type of conditional coding to use       */
 );
 
-#if ENABLE_OPTIMIZE
-void (*silk_warped_LPC_analysis_filter_FIX)
-(
+void silk_warped_LPC_analysis_filter_FIX_c(
           opus_int32            state[],                    /* I/O  State [order + 1]                   */
           opus_int32            res_Q2[],                   /* O    Residual signal [length]            */
     const opus_int16            coef_Q13[],                 /* I    Coefficients [order]                */
@@ -592,6 +627,35 @@ void (*silk_warped_LPC_analysis_filter_FIX)
     const opus_int              length,                     /* I    Length of input signal              */
     const opus_int              order                       /* I    Filter order (even)                 */
 );
-#endif
+
+/*Is run-time CPU detection enabled on this platform?*/
+# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+void silk_warped_LPC_analysis_filter_FIX_sse4_1(
+          opus_int32            state[],                    /* I/O  State [order + 1]                   */
+          opus_int32            res_Q2[],                   /* O    Residual signal [length]            */
+    const opus_int16            coef_Q13[],                 /* I    Coefficients [order]                */
+    const opus_int16            input[],                    /* I    Input signal [length]               */
+    const opus_int16            lambda_Q16,                 /* I    Warping factor                      */
+    const opus_int              length,                     /* I    Length of input signal              */
+    const opus_int              order                       /* I    Filter order (even)                 */
+);
+
+extern void (*const SILK_WARPED_LPC_ANALYSIS_FILTER_FIX_IMPL[OPUS_ARCHMASK + 1])(
+          opus_int32            state[],                    /* I/O  State [order + 1]                   */
+          opus_int32            res_Q2[],                   /* O    Residual signal [length]            */
+    const opus_int16            coef_Q13[],                 /* I    Coefficients [order]                */
+    const opus_int16            input[],                    /* I    Input signal [length]               */
+    const opus_int16            lambda_Q16,                 /* I    Warping factor                      */
+    const opus_int              length,                     /* I    Length of input signal              */
+    const opus_int              order                       /* I    Filter order (even)                 */
+);
+
+#  define silk_warped_LPC_analysis_filter_FIX(_a, _b, _c, _d, _e, _f, _g, arch) \
+    ((*SILK_WARPED_LPC_ANALYSIS_FILTER_FIX_IMPL[(arch) & OPUS_ARCHMASK])(_a, _b, _c, _d, _e, _f, _g))
+# else
+#  define silk_warped_LPC_analysis_filter_FIX(_a, _b, _c, _d, _e, _f, _g, arch) \
+    ((void)(arch),silk_warped_LPC_analysis_filter_FIX_c(_a, _b, _c, _d, _e, _f, _g))
+
+# endif
 
 #endif

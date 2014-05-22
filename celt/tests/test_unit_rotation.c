@@ -44,6 +44,9 @@
 #include "entdec.c"
 #include "mathops.c"
 #include "bands.h"
+
+#include "pitch.c"
+#include "celt_lpc.c"
 #include <math.h>
 #define MAX_SIZE 100
 
@@ -78,6 +81,12 @@ void test_rotation(int N, int K)
       ret = 1;
    }
 }
+
+#if (defined(HAVE_SSE4_1) || defined(HAVE_SSE2)) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+#include "x86/pitch_sse.c"
+#include "x86/celt_lpc_sse.c"
+#include "x86/x86_celt_map.c"
+# endif
 
 int main(void)
 {

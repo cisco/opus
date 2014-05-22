@@ -32,12 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "main.h"
 
 /* Entropy constrained matrix-weighted VQ, hard-coded to 5-element vectors, for a single input data vector */
-#if ENABLE_OPTIMIZE
-void silk_VQ_WMat_EC_c
-#else
-void silk_VQ_WMat_EC
-#endif
-(
+void silk_VQ_WMat_EC_c(
     opus_int8                   *ind,                           /* O    index of best codebook vector               */
     opus_int32                  *rate_dist_Q14,                 /* O    best weighted quant error + mu * rate       */
     opus_int                    *gain_Q7,                       /* O    sum of absolute LTP coefficients            */
@@ -123,21 +118,4 @@ void silk_VQ_WMat_EC
         cb_row_Q7 += LTP_ORDER;
     }
 }
-
-#if ENABLE_OPTIMIZE
-void (*silk_VQ_WMat_EC)
-(
-    opus_int8                   *ind,                           /* O    index of best codebook vector               */
-    opus_int32                  *rate_dist_Q14,                 /* O    best weighted quant error + mu * rate       */
-    opus_int                    *gain_Q7,                       /* O    sum of absolute LTP coefficients            */
-    const opus_int16            *in_Q14,                        /* I    input vector to be quantized                */
-    const opus_int32            *W_Q18,                         /* I    weighting matrix                            */
-    const opus_int8             *cb_Q7,                         /* I    codebook                                    */
-    const opus_uint8            *cb_gain_Q7,                    /* I    codebook effective gain                     */
-    const opus_uint8            *cl_Q5,                         /* I    code length for each codebook vector        */
-    const opus_int              mu_Q9,                          /* I    tradeoff betw. weighted error and rate      */
-    const opus_int32            max_gain_Q7,                    /* I    maximum sum of absolute LTP coefficients    */
-    opus_int                    L                               /* I    number of vectors in codebook               */
-) = silk_VQ_WMat_EC_c;
-#endif
 

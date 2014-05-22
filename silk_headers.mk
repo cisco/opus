@@ -27,4 +27,5 @@ silk/fixed/main_FIX.h \
 silk/fixed/structs_FIX.h \
 silk/float/main_FLP.h \
 silk/float/structs_FLP.h \
-silk/float/SigProc_FLP.h
+silk/float/SigProc_FLP.h \
+silk/x86/x86cpu.h

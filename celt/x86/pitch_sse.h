@@ -36,7 +36,7 @@
 #include "arch.h"
 
 #define OVERRIDE_XCORR_KERNEL
-static OPUS_INLINE void xcorr_kernel(const opus_val16 *x, const opus_val16 *y, opus_val32 sum[4], int len)
+static OPUS_INLINE void xcorr_kernel_c(const opus_val16 *x, const opus_val16 *y, opus_val32 sum[4], int len)
 {
    int j;
    __m128 xsum1, xsum2;
@@ -71,6 +71,9 @@ static OPUS_INLINE void xcorr_kernel(const opus_val16 *x, const opus_val16 *y, o
    _mm_storeu_ps(sum,_mm_add_ps(xsum1,xsum2));
 }
 
+#  define xcorr_kernel(_x, _y, _z, len, arch) \
+    ((void)(arch),xcorr_kernel_c(_x, _y, _z, len))
+    
 #define OVERRIDE_DUAL_INNER_PROD
 static OPUS_INLINE void dual_inner_prod(const opus_val16 *x, const opus_val16 *y01, const opus_val16 *y02,
       int N, opus_val32 *xy1, opus_val32 *xy2)
@@ -102,7 +105,7 @@ static OPUS_INLINE void dual_inner_prod(const opus_val16 *x, const opus_val16 *y
 }
 
 #define OVERRIDE_CELT_INNER_PROD
-static OPUS_INLINE opus_val32 celt_inner_prod(const opus_val16 *x, const opus_val16 *y,
+static OPUS_INLINE opus_val32 celt_inner_prod_c(const opus_val16 *x, const opus_val16 *y,
       int N)
 {
    int i;
@@ -126,7 +129,10 @@ static OPUS_INLINE opus_val32 celt_inner_prod(const opus_val16 *x, const opus_va
    }
    return xy;
 }
-
+    
+#  define celt_inner_prod(_x, _y, len, arch) \
+    ((void)(arch),celt_inner_prod_c(_x, _y, len))
+    
 #define OVERRIDE_COMB_FILTER_CONST
 static OPUS_INLINE void comb_filter_const(opus_val32 *y, opus_val32 *x, int T, int N,
       opus_val16 g10, opus_val16 g11, opus_val16 g12)

@@ -98,11 +98,7 @@ static void ec_enc_carry_out(ec_enc *_this,int _c){
   else _this->ext++;
 }
 
-#if ! ENABLE_OPTIMIZE
-static void ec_enc_normalize(ec_enc *_this){
-#else
-static inline void ec_enc_normalize(ec_enc *_this){
-#endif
+static OPUS_INLINE void ec_enc_normalize(ec_enc *_this){
   /*If the range is too small, output some bits and rescale it.*/
   while(_this->rng<=EC_CODE_BOT){
     ec_enc_carry_out(_this,(int)(_this->val>>EC_CODE_SHIFT));
@@ -165,11 +161,9 @@ void ec_enc_bit_logp(ec_enc *_this,int _val,unsigned _logp){
   ec_enc_normalize(_this);
 }
 
-#if ! ENABLE_OPTIMIZE
+
 void ec_enc_icdf(ec_enc *_this,int _s,const unsigned char *_icdf,unsigned _ftb){
-#else
-inline void ec_enc_icdf(ec_enc *_this,int _s,const unsigned char *_icdf,unsigned _ftb){
-#endif
+
   opus_uint32 r;
   r=_this->rng>>_ftb;
   if(_s>0){

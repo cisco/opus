@@ -2,11 +2,14 @@
 #include "config.h"
 #endif
 
+#if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
 
-#if ENABLE_OPTIMIZE
-#include "xmmintrin.h"
-#include "emmintrin.h"
-#include "smmintrin.h"
+#pragma GCC target ("sse4.1")
+
+
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#include <smmintrin.h>
 
 #include "main.h"
 #include "stack_alloc.h"
@@ -17,7 +20,7 @@ static const opus_int32 tiltWeights[ VAD_N_BANDS ] = { 30000, 6000, -12000, -120
 /***************************************/
 /* Get the speech activity level in Q8 */
 /***************************************/
-opus_int silk_VAD_GetSA_Q8_sse(                                     /* O    Return value, 0 if success                  */
+opus_int silk_VAD_GetSA_Q8_sse4_1(                                     /* O    Return value, 0 if success                  */
     silk_encoder_state          *psEncC,                        /* I/O  Encoder state                               */
     const opus_int16            pIn[]                           /* I    PCM input                                   */
 )
@@ -35,6 +38,8 @@ opus_int silk_VAD_GetSA_Q8_sse(                                     /* O    Retu
     opus_int   X_offset[ VAD_N_BANDS ];
     opus_int   ret = 0;
     silk_VAD_state *psSilk_VAD = &psEncC->sVAD;
+
+    __m128i xmm_X, xmm_acc;
     SAVE_STACK;
 
     /* Safety checks */
@@ -105,8 +110,6 @@ opus_int silk_VAD_GetSA_Q8_sse(                                     /* O    Retu
         for( s = 0; s < VAD_INTERNAL_SUBFRAMES; s++ ) {
             sumSquared = 0;
 
-            __m128i xmm_X, xmm_acc;
-
             xmm_acc = _mm_setzero_si128();
 
             for( i = 0; i < dec_subframe_length - 7; i += 8 )
@@ -116,9 +119,13 @@ opus_int silk_VAD_GetSA_Q8_sse(                                     /* O    Retu
                 xmm_X   = _mm_madd_epi16(xmm_X, xmm_X);
                 xmm_acc = _mm_add_epi32(xmm_acc, xmm_X);
             }
+            /*
+            xmm_acc = _mm_hadd_epi32(xmm_acc, xmm_acc);
+            xmm_acc = _mm_hadd_epi32(xmm_acc, xmm_acc);
+            */
+            xmm_acc = _mm_add_epi32(xmm_acc, _mm_unpackhi_epi64(xmm_acc, xmm_acc));
+            xmm_acc = _mm_add_epi32(xmm_acc, _mm_shufflelo_epi16(xmm_acc, 0x0E));
 
-            xmm_acc = _mm_hadd_epi32(xmm_acc, xmm_acc);
-            xmm_acc = _mm_hadd_epi32(xmm_acc, xmm_acc);
             sumSquared += _mm_cvtsi128_si32(xmm_acc);
 
             for( ; i < dec_subframe_length; i++ ) {
@@ -249,5 +256,5 @@ opus_int silk_VAD_GetSA_Q8_sse(                                     /* O    Retu
     RESTORE_STACK;
     return( ret );
 }
-
 #endif
+

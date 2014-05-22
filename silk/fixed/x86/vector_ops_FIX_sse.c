@@ -1,16 +1,21 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-#if ENABLE_OPTIMIZE
-#include "xmmintrin.h"
-#include "emmintrin.h"
-#include "smmintrin.h"
+
+#if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+
+#pragma GCC target ("sse4.1")
+
+
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#include <smmintrin.h>
 #include "main.h"
 
 #include "SigProc_FIX.h"
 #include "pitch.h"
 
-opus_int64 silk_inner_prod16_aligned_64_sse(
+opus_int64 silk_inner_prod16_aligned_64_sse4_1(
     const opus_int16            *inVec1,            /*    I input vector 1                                              */
     const opus_int16            *inVec2,            /*    I input vector 2                                              */
     const opus_int              len                 /*    I vector lengths                                              */
@@ -48,7 +53,7 @@ opus_int64 silk_inner_prod16_aligned_64_sse(
 
     acc2 = _mm_srli_si128(acc1, 8);
     acc1 = _mm_add_epi64(acc1, acc2);
-    sum += _mm_cvtsi128_si64(acc1);
+    sum = ((opus_int64)_mm_extract_epi32(acc1, 1) << 32) | _mm_extract_epi32(acc1, 0);
 
     for( ; i < len; i++ ) {
         sum = silk_SMLABB( sum, inVec1[ i ], inVec2[ i ] );
@@ -56,5 +61,5 @@ opus_int64 silk_inner_prod16_aligned_64_sse(
 
     return sum;
 }
-
 #endif
+

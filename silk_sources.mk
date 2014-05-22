@@ -20,6 +20,7 @@ silk/NSQ.c \
 silk/x86/NSQ_sse.c \
 silk/NSQ_del_dec.c \
 silk/x86/NSQ_del_dec_sse.c \
+silk/x86/x86_silk_map.c \
 silk/PLC.c \
 silk/shell_coder.c \
 silk/tables_gain.c \

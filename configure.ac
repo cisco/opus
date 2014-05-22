@@ -190,7 +190,7 @@ AC_ARG_ENABLE([rtcd],
     [enable_rtcd=yes])
 
 AC_ARG_ENABLE([intrinsics],
-    [AS_HELP_STRING([--enable-intrinsics], [enable intrinsics optimizations])],,
+    [AS_HELP_STRING([--enable-intrinsics], [enable intrinsics optimizations(only for x86 fixed point)])],,
     [enable_intrinsics=no])
 
 rtcd_support=no
@@ -361,13 +361,66 @@ AS_IF([test x"$enable_rtcd" = x"yes"],[
 ])
 
 AS_IF([test x"$enable_intrinsics" = x"yes"],[
-AS_IF([test x"$host_cpu" = x"i386" -o x"$host_cpu" = x"i686" -o x"$host_cpu" = x"x86_64"],[
-    AS_IF([test x"$enable_rtcd" = x"yes" -a x],[
-        AC_DEFINE([ENABLE_OPTIMIZE], [1], [For x86 instrinsics optimize])
-        CFLAGS="$CFLAGS -msse4.2"
-        rtcd_support="yes"
+AS_IF([test x"$enable_float" = x"no"], 
+[AS_IF([test x"$host_cpu" = x"i386" -o x"$host_cpu" = x"i686" -o x"$host_cpu" = x"x86_64"],[
+    AS_IF([test x"$enable_rtcd" = x"yes"],[
+       AC_MSG_CHECKING([sse4.1])
+       TMP_CFLAGS="$CFLAGS"
+       gcc -Q --help=target | grep "\-msse4.1 "
+       AS_IF([test x"$?" = x"0"],[
+            AC_MSG_RESULT([yes])
+            CFLAGS="$CFLAGS -msse4.1"
+            AC_CHECK_HEADER(xmmintrin.h, [], [AC_MSG_ERROR([Couldn't find xmmintrin.h])])
+            AC_CHECK_HEADER(emmintrin.h, [], [AC_MSG_ERROR([Couldn't find emmintrin.h])])
+            AC_CHECK_HEADER(smmintrin.h, [], [AC_MSG_ERROR([Couldn't find smmintrin.h])],[
+            #ifdef HAVE_XMMINSTRIN_H
+                 #include <xmmintrin.h>
+                 #endif
+                 #ifdef HAVE_EMMINSTRIN_H
+                 #include <emmintrin.h>
+                 #endif
+            ])
+
+            AC_LINK_IFELSE(AC_LANG_PROGRAM([
+                 #include <xmmintrin.h>
+                 #include <emmintrin.h>
+                 #include <smmintrin.h>
+            ],[
+                 __m128i mtest = _mm_setzero_si128();
+                 mtest = _mm_cmpeq_epi64(mtest, mtest);
+            ]),
+            [], [AC_MSG_ERROR([Compiler & linker failure for sse4.1])])
+
+            CFLAGS="$TMP_CFLAGS"
+            AC_DEFINE([HAVE_SSE4_1], [1], [For x86 sse4.1 instrinsics optimize])
+            AC_DEFINE([HAVE_SSE2], [1], [For x86 sse2 instrinsics optimize])
+            AC_DEFINE([OPUS_HAVE_RTCD], [1], [Use run-time CPU capabilities detection])
+            rtcd_support="yes"],[
+               gcc -Q --help=target | grep "\-msse2 "
+               AC_MSG_CHECKING([sse2])
+               AS_IF([test x"$?" = x"0"],[
+                   AC_MSG_RESULT([yes])
+                   CFLAGS="$CFLAGS -msse2"
+                   AC_CHECK_HEADER(xmmintrin.h, [], [AC_MSG_ERROR([Couldn't find xmmintrin.h])])
+                   AC_CHECK_HEADER(emmintrin.h, [], [AC_MSG_ERROR([Couldn't find emmintrin.h])])
+
+                   AC_LINK_IFELSE(AC_LANG_PROGRAM([
+                        #include <xmmintrin.h>
+                        #include <emmintrin.h>
+                   ],[
+                        __m128i mtest = _mm_setzero_si128();
+                   ]),
+                   [], [AC_MSG_ERROR([Compiler & linker failure for sse2])])
+
+                  CFLAGS="$TMP_CFLAGS"
+                  AC_DEFINE([HAVE_SSE2], [1], [For x86 sse2 instrinsics optimize])
+                  AC_DEFINE([OPUS_HAVE_RTCD], [1], [Use run-time CPU capabilities detection])
+                  rtcd_support="yes"
+            ],[enable_intrinsics="no"])
+        ])
     ])
 ])
+], [enable_intrinsics="no"])
 ])
 
 AC_ARG_ENABLE([assertions],

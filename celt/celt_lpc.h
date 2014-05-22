@@ -29,40 +29,56 @@
 #define PLC_H
 
 #include "arch.h"
+#include "cpu_support.h"
 
 #define LPC_ORDER 24
 
 void _celt_lpc(opus_val16 *_lpc, const opus_val32 *ac, int p);
 
-#if ENABLE_OPTIMIZE && defined(FIXED_POINT)
-void (*celt_fir)
-#else
-void celt_fir
-#endif
-(
+void celt_fir_c(
          const opus_val16 *x,
          const opus_val16 *num,
          opus_val16 *y,
          int N,
          int ord,
-         opus_val16 *mem);
+         opus_val16 *mem,
+         const int arch);
 
-#if ENABLE_OPTIMIZE && defined(FIXED_POINT)
-void celt_fir_sse(
+/*Is run-time CPU detection enabled on this platform?*/
+# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+void celt_fir_sse4_1(
          const opus_val16 *x,
          const opus_val16 *num,
          opus_val16 *y,
          int N,
          int ord,
-         opus_val16 *mem);
-#endif
+         opus_val16 *mem,
+         const int arch);
+
+extern void (*const CELT_FIR_IMPL[OPUS_ARCHMASK + 1])(
+         const opus_val16 *x,
+         const opus_val16 *num,
+         opus_val16 *y,
+         int N,
+         int ord,
+         opus_val16 *mem,
+         const int arch);
+
+#  define celt_fir(_a, _b, _c, _d, _e, _f, arch) \
+    ((*CELT_FIR_IMPL[(arch) & OPUS_ARCHMASK])(_a, _b, _c, _d, _e, _f, arch))
+# else
+#  define celt_fir(_a, _b, _c, _d, _e, _f, arch) \
+    (celt_fir_c(_a, _b, _c, _d, _e, _f, arch))
+
+# endif
 
 void celt_iir(const opus_val32 *x,
          const opus_val16 *den,
          opus_val32 *y,
          int N,
          int ord,
-         opus_val16 *mem);
+         opus_val16 *mem,
+         const int arch);
 
 int _celt_autocorr(const opus_val16 *x, opus_val32 *ac,
          const opus_val16 *window, int overlap, int lag, int n, int arch);

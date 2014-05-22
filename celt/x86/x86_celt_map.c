@@ -25,25 +25,63 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifdef HAVE_CONFIG_H
+#if defined(HAVE_CONFIG_H)
 #include "config.h"
 #endif
 
+#if (defined(HAVE_SSE4_1) || defined(HAVE_SSE2))&& defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+
+#if defined(HAVE_SSE4_1)
+#pragma GCC target ("sse4.1")
+#else
+#pragma GCC target ("sse2")
+#endif
+
+#include "x86/x86cpu.h"
+#include "structs.h"
+#include "celt_lpc.h"
 #include "pitch.h"
 
-#if defined(OPUS_HAVE_RTCD) && defined(OPUS_ARM_ASM)
 
-# if defined(FIXED_POINT)
-opus_val32 (*const CELT_PITCH_XCORR_IMPL[OPUS_ARCHMASK+1])(const opus_val16 *,
-    const opus_val16 *, opus_val32 *, int , int) = {
-  celt_pitch_xcorr_c,               /* ARMv4 */
-  MAY_HAVE_EDSP(celt_pitch_xcorr),  /* EDSP */
-  MAY_HAVE_MEDIA(celt_pitch_xcorr), /* Media */
-  MAY_HAVE_NEON(celt_pitch_xcorr)   /* NEON */
+# if defined(HAVE_SSE4_1)
+void (*const CELT_FIR_IMPL[OPUS_ARCHMASK + 1])(
+         const opus_val16 *,
+         const opus_val16 *,
+         opus_val16 *,
+         int ,
+         int ,
+         opus_val16 *,
+         int
+) = {
+  celt_fir_c,                /* non-sse */
+  celt_fir_c, 
+  MAY_HAVE_SSE4_1(celt_fir), /* sse4.1  */
+  celt_fir_c
 };
-# else
-#  error "Floating-point implementation is not supported by ARM asm yet." \
- "Reconfigure with --disable-rtcd or send patches."
-# endif
+
+void (*const XCORR_KERNEL_IMPL[OPUS_ARCHMASK + 1])(
+         const opus_val16 *,
+         const opus_val16 *,
+         opus_val32       *,
+         int
+) = {
+  xcorr_kernel_c,                /* non-sse */
+  xcorr_kernel_c,
+  MAY_HAVE_SSE4_1(xcorr_kernel), /* sse4.1  */
+  xcorr_kernel_c
+};
+#endif
+
+opus_val32 (*const CELT_INNER_PROD_IMPL[OPUS_ARCHMASK + 1])(
+         const opus_val16 *,
+         const opus_val16 *,
+         int
+) = {
+  celt_inner_prod_c,                /* non-sse */
+  MAY_HAVE_SSE2(celt_inner_prod), 
+  MAY_HAVE_SSE4_1(celt_inner_prod), /* sse4.1  */
+  celt_inner_prod_c
+};
 
 #endif
+

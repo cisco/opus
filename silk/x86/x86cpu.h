@@ -25,25 +25,24 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+#if !defined(X86CPU_H)
+# define X86CPU_H
 
-#include "pitch.h"
+# if defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
 
-#if defined(OPUS_HAVE_RTCD) && defined(OPUS_ARM_ASM)
-
-# if defined(FIXED_POINT)
-opus_val32 (*const CELT_PITCH_XCORR_IMPL[OPUS_ARCHMASK+1])(const opus_val16 *,
-    const opus_val16 *, opus_val32 *, int , int) = {
-  celt_pitch_xcorr_c,               /* ARMv4 */
-  MAY_HAVE_EDSP(celt_pitch_xcorr),  /* EDSP */
-  MAY_HAVE_MEDIA(celt_pitch_xcorr), /* Media */
-  MAY_HAVE_NEON(celt_pitch_xcorr)   /* NEON */
-};
+#if defined(HAVE_SSE2)
+#  define MAY_HAVE_SSE2(name) name ## _sse2
 # else
-#  error "Floating-point implementation is not supported by ARM asm yet." \
- "Reconfigure with --disable-rtcd or send patches."
+#  define MAY_HAVE_SSE2(name) name ## _c
 # endif
 
+# if defined(HAVE_SSE4_1)
+#  define MAY_HAVE_SSE4_1(name) name ## _sse4_1
+#else
+#  define MAY_HAVE_SSE4_1(name) name ## _c
+#endif
+
+int opus_select_arch(void);
+
+#endif
 #endif

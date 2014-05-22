@@ -2,15 +2,17 @@
 #include "config.h"
 #endif
 
+#if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
 
-#if ENABLE_OPTIMIZE
-#include "xmmintrin.h"
-#include "emmintrin.h"
-#include "smmintrin.h"
+#pragma GCC target ("sse4.1")
+
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#include <smmintrin.h>
 #include "main.h"
 
 /* Entropy constrained matrix-weighted VQ, hard-coded to 5-element vectors, for a single input data vector */
-void silk_VQ_WMat_EC_sse(
+void silk_VQ_WMat_EC_sse4_1(
     opus_int8                   *ind,                           /* O    index of best codebook vector               */
     opus_int32                  *rate_dist_Q14,                 /* O    best weighted quant error + mu * rate       */
     opus_int                    *gain_Q7,                       /* O    sum of absolute LTP coefficients            */
@@ -30,6 +32,7 @@ void silk_VQ_WMat_EC_sse(
     opus_int32 sum1_Q14, sum2_Q16;
     opus_int32 sum2_Q16_tmp1, sum2_Q16_tmp2, sum2_Q16_tmp3;
 
+    __m128i C_tmp1, C_tmp2, C_tmp3, C_tmp4, C_tmp5;
     /* Loop over codebook */
     *rate_dist_Q14 = silk_int32_MAX;
     cb_row_Q7 = cb_Q7;
@@ -38,7 +41,6 @@ void silk_VQ_WMat_EC_sse(
 
 		diff_Q14[ 0 ] = in_Q14[ 0 ] - silk_LSHIFT( cb_row_Q7[ 0 ], 7 );
 
-        __m128i C_tmp1, C_tmp2, C_tmp3, C_tmp4, C_tmp5;
         C_tmp1 = _mm_loadu_si128((__m128i*)(&in_Q14[1]));
         C_tmp1 = _mm_cvtepi16_epi32(C_tmp1);
         C_tmp2 = _mm_loadu_si128((__m128i*)(&cb_row_Q7[1]));

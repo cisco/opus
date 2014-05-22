@@ -38,14 +38,14 @@ POSSIBILITY OF SUCH DAMAGE.
 /* This is an OPUS_INLINE header file for general platform. */
 
 /* (a32 * (opus_int32)((opus_int16)(b32))) >> 16 output have to be 32bit int */
-#if ((ENABLE_OPTIMIZE) && (__x86_64__))
+#if (__x86_64__)
 #define silk_SMULWB(a32, b32)            (((a32) * (opus_int64)((opus_int16)(b32))) >> 16)
 #else
 #define silk_SMULWB(a32, b32)            ((((a32) >> 16) * (opus_int32)((opus_int16)(b32))) + ((((a32) & 0x0000FFFF) * (opus_int32)((opus_int16)(b32))) >> 16))
 #endif
 
 /* a32 + (b32 * (opus_int32)((opus_int16)(c32))) >> 16 output have to be 32bit int */
-#if ((ENABLE_OPTIMIZE) && (__x86_64__))
+#if (__x86_64__)
 #define silk_SMLAWB(a32, b32, c32)       ((a32) + (((b32) * (opus_int64)((opus_int16)(c32))) >> 16))
 #else
 #define silk_SMLAWB(a32, b32, c32)       ((a32) + ((((b32) >> 16) * (opus_int32)((opus_int16)(c32))) + ((((b32) & 0x0000FFFF) * (opus_int32)((opus_int16)(c32))) >> 16)))
@@ -55,7 +55,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define silk_SMULWT(a32, b32)            (((a32) >> 16) * ((b32) >> 16) + ((((a32) & 0x0000FFFF) * ((b32) >> 16)) >> 16))
 
 /* a32 + (b32 * (c32 >> 16)) >> 16 */
-#if ((ENABLE_OPTIMIZE) && (__x86_64__))
+#if (__x86_64__)
 #define silk_SMLAWT(a32, b32, c32)       ((a32) + (((b32) * ((opus_int64)(c32) >> 16)) >> 16))
 #else
 #define silk_SMLAWT(a32, b32, c32)       ((a32) + (((b32) >> 16) * ((c32) >> 16)) + ((((b32) & 0x0000FFFF) * ((c32) >> 16)) >> 16))
@@ -77,14 +77,14 @@ POSSIBILITY OF SUCH DAMAGE.
 #define silk_SMLAL(a64, b32, c32)        (silk_ADD64((a64), ((opus_int64)(b32) * (opus_int64)(c32))))
 
 /* (a32 * b32) >> 16 */
-#if ((ENABLE_OPTIMIZE) && (__x86_64__))
+#if (__x86_64__)
 #define silk_SMULWW(a32, b32)            (((opus_int64)(a32) * (b32)) >> 16)
 #else
 #define silk_SMULWW(a32, b32)            silk_MLA(silk_SMULWB((a32), (b32)), (a32), silk_RSHIFT_ROUND((b32), 16))
 #endif
 
 /* a32 + ((b32 * c32) >> 16) */
-#if ((ENABLE_OPTIMIZE) && (__x86_64__))
+#if (__x86_64__)
 #define silk_SMLAWW(a32, b32, c32)       ((a32) + (((opus_int64)(b32) * (c32)) >> 16))
 #else
 #define silk_SMLAWW(a32, b32, c32)       silk_MLA(silk_SMLAWB((a32), (b32), (c32)), (b32), silk_RSHIFT_ROUND((c32), 16))
