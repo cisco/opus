@@ -22,21 +22,16 @@ typedef char bool;
 #include <intrin.h>
 #define cpuid(info,x) __cpuid(info,x)
 #else
-#include <stdbool.h>
-//  GCC Inline Assembly
-void cpuid(int CPUInfo[4],int InfoType)
-{
-    __asm__ __volatile__ (
-        "cpuid":
-        "=a" (CPUInfo[0]),
-        "=b" (CPUInfo[1]),
-        "=c" (CPUInfo[2]),
-        "=d" (CPUInfo[3]) :
-        "a" (InfoType), "c" (0)
-    );
-}
-#endif
 
+#include <stdbool.h>
+#include <cpuid.h>
+
+static void cpuid(unsigned int CPUInfo[4], unsigned int InfoType)
+{
+    __get_cpuid(InfoType, &(CPUInfo[0]), &(CPUInfo[1]), &(CPUInfo[2]), &(CPUInfo[3]));
+}
+
+#endif
 
 #include "SigProc_FIX.h"
 #include "celt_lpc.h"

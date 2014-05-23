@@ -88,10 +88,6 @@ void silk_NSQ_sse4_1(
 
     offset_Q10 = silk_Quantization_Offsets_Q10[ psIndices->signalType >> 1 ][ psIndices->quantOffsetType ];
 
-    //opus_int32   table[ 64 ][ 4 ];
-    //opus_int32   tmp1;
-    //opus_int32   q1_Q10, q2_Q10, rd1_Q20, rd2_Q20;
-
     // 0
     q1_Q10  = offset_Q10;
     q2_Q10  = offset_Q10 + ( 1024 - QUANT_LEVEL_ADJUST_Q10 );
@@ -274,7 +270,6 @@ static OPUS_INLINE void silk_noise_shape_quantizer_10_16_sse4_1(
     xq_Q14         = psLPC_Q14[ 0 ];
     LTP_pred_Q13   = 0;
 
-
     // load a_Q12
     xmm_one = _mm_set_epi8(1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14);
 
@@ -327,9 +322,6 @@ static OPUS_INLINE void silk_noise_shape_quantizer_10_16_sse4_1(
 
         /* Avoids introducing a bias because silk_SMLAWB() always rounds to -inf */
         LPC_pred_Q10 = 8; // silk_RSHIFT( predictLPCOrder, 1 );
-
-        // silk_SMLAWB(a32, b16) = (a32 >> 16) * b16 + [(a32 & 0xFFFF) * b16] >> 16
-        //                       a32 high 16 bits      a32 low 16 bits (unsigned)
 
         // shift psLPC_Q14
         psLPC_Q14_hi_89ABCDEF = _mm_alignr_epi8(psLPC_Q14_hi_01234567, psLPC_Q14_hi_89ABCDEF, 2);
@@ -632,8 +624,6 @@ static OPUS_INLINE void silk_nsq_scale_states_sse4_1(
 
     /* Scale input */
     inv_gain_Q23 = silk_RSHIFT_ROUND( inv_gain_Q31, 8 );
-
-    // SMULWW(a, b) = (a in 32bit * b in 32bit) >> 16
 
     // prepare inv_gain_Q23 in packed 4 32-bits
     xmm_inv_gain_Q23 = _mm_set1_epi32(inv_gain_Q23);

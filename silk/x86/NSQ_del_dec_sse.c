@@ -334,7 +334,6 @@ static OPUS_INLINE void silk_noise_shape_quantizer_del_dec_sse4_1(
     pred_lag_ptr = &sLTP_Q15[ NSQ->sLTP_buf_idx - lag + LTP_ORDER / 2 ];
     Gain_Q10     = silk_RSHIFT( Gain_Q16, 6 );
 
-    //__m128i a_Q12_0123, a_Q12_4567, a_Q12_89AB, a_Q12_CDEF;
     a_Q12_0123 = _mm_cvtepi16_epi32( *(__m128i*)(a_Q12) );
     a_Q12_4567 = _mm_cvtepi16_epi32( *(__m128i*)(a_Q12+4) );
 
@@ -730,10 +729,6 @@ static OPUS_INLINE void silk_nsq_del_dec_scale_states_sse4_1(
 
     /* Scale input */
     inv_gain_Q23 = silk_RSHIFT_ROUND( inv_gain_Q31, 8 );
-
-    //__m128i xmm_inv_gain_Q23, xmm_x_Q3_x2x0, xmm_x_Q3_x3x1;
-
-    // SMULWW(a, b) = (a in 32bit * b in 32bit) >> 16
 
     // prepare inv_gain_Q23 in packed 4 32-bits
     xmm_inv_gain_Q23 = _mm_set1_epi32(inv_gain_Q23);

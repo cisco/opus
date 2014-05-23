@@ -418,7 +418,7 @@ AS_IF([test x"$enable_float" = x"no"],
                   rtcd_support="yes"
             ],[enable_intrinsics="no"])
         ])
-    ])
+    ], [enable_intrinsics="no"])
 ])
 ], [enable_intrinsics="no"])
 ])
