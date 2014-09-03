@@ -17,10 +17,7 @@ silk/interpolate.c \
 silk/LP_variable_cutoff.c \
 silk/NLSF_decode.c \
 silk/NSQ.c \
-silk/x86/NSQ_sse.c \
 silk/NSQ_del_dec.c \
-silk/x86/NSQ_del_dec_sse.c \
-silk/x86/x86_silk_map.c \
 silk/PLC.c \
 silk/shell_coder.c \
 silk/tables_gain.c \
@@ -31,11 +28,9 @@ silk/tables_other.c \
 silk/tables_pitch_lag.c \
 silk/tables_pulses_per_block.c \
 silk/VAD.c \
-silk/x86/VAD_sse.c \
 silk/control_audio_bandwidth.c \
 silk/quant_LTP_gains.c \
 silk/VQ_WMat_EC.c \
-silk/x86/VQ_WMat_EC_sse.c \
 silk/HP_variable_cutoff.c \
 silk/NLSF_encode.c \
 silk/NLSF_VQ.c \
@@ -81,6 +76,11 @@ silk/stereo_encode_pred.c \
 silk/stereo_find_predictor.c \
 silk/stereo_quant_pred.c
 
+SILK_SOURCES_SSE4_1 = silk/x86/NSQ_sse.c \
+silk/x86/NSQ_del_dec_sse.c \
+silk/x86/x86_silk_map.c \
+silk/x86/VAD_sse.c \
+silk/x86/VQ_WMat_EC_sse.c
 
 SILK_SOURCES_FIXED = \
 silk/fixed/LTP_analysis_filter_FIX.c \
@@ -93,7 +93,6 @@ silk/fixed/find_pitch_lags_FIX.c \
 silk/fixed/find_pred_coefs_FIX.c \
 silk/fixed/noise_shape_analysis_FIX.c \
 silk/fixed/prefilter_FIX.c \
-silk/fixed/x86/prefilter_FIX_sse.c \
 silk/fixed/process_gains_FIX.c \
 silk/fixed/regularize_correlations_FIX.c \
 silk/fixed/residual_energy16_FIX.c \
@@ -103,14 +102,16 @@ silk/fixed/warped_autocorrelation_FIX.c \
 silk/fixed/apply_sine_window_FIX.c \
 silk/fixed/autocorr_FIX.c \
 silk/fixed/burg_modified_FIX.c \
-silk/fixed/x86/burg_modified_FIX_sse.c \
 silk/fixed/k2a_FIX.c \
 silk/fixed/k2a_Q16_FIX.c \
 silk/fixed/pitch_analysis_core_FIX.c \
-silk/fixed/x86/vector_ops_FIX_sse.c \
 silk/fixed/vector_ops_FIX.c \
 silk/fixed/schur64_FIX.c \
 silk/fixed/schur_FIX.c 
+
+SILK_SOURCES_FIXED_SSE4_1 = silk/fixed/x86/vector_ops_FIX_sse.c \
+silk/fixed/x86/burg_modified_FIX_sse.c \
+silk/fixed/x86/prefilter_FIX_sse.c
 
 SILK_SOURCES_FLOAT = \
 silk/float/apply_sine_window_FLP.c \

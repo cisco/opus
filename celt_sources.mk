@@ -12,13 +12,16 @@ celt/mathops.c \
 celt/mdct.c \
 celt/modes.c \
 celt/pitch.c \
-celt/x86/pitch_sse.c \
 celt/celt_lpc.c \
-celt/x86/celt_lpc_sse.c \
-celt/x86/x86_celt_map.c \
 celt/quant_bands.c \
 celt/rate.c \
 celt/vq.c
+
+CELT_SOURCE_SSE = celt/x86/x86_cpu.c \
+celt/x86/x86_celt_map.c \
+celt/x86/pitch_sse.c
+
+CELT_SOURCE_SSE4_1 = celt/x86/celt_lpc_sse.c
 
 CELT_SOURCES_ARM = \
 celt/arm/armcpu.c \

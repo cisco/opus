@@ -72,16 +72,16 @@ static OPUS_INLINE opus_int32 silk_A2NLSF_eval_poly( /* return the polynomial ev
     y32 = p[ dd ];                                  /* Q16 */
     x_Q16 = silk_LSHIFT( x, 4 );
 
-    if (likely(8 == dd))
+    if ( opus_likely( 8 == dd ) )
     {
-        y32 = p[ 7 ] + (((opus_int64)y32 * x_Q16) >> 16);
-        y32 = p[ 6 ] + (((opus_int64)y32 * x_Q16) >> 16);
-        y32 = p[ 5 ] + (((opus_int64)y32 * x_Q16) >> 16);
-        y32 = p[ 4 ] + (((opus_int64)y32 * x_Q16) >> 16);
-        y32 = p[ 3 ] + (((opus_int64)y32 * x_Q16) >> 16);
-        y32 = p[ 2 ] + (((opus_int64)y32 * x_Q16) >> 16);
-        y32 = p[ 1 ] + (((opus_int64)y32 * x_Q16) >> 16);
-        y32 = p[ 0 ] + (((opus_int64)y32 * x_Q16) >> 16);
+        y32 = silk_SMLAWW( p[ 7 ], y32, x_Q16 );
+        y32 = silk_SMLAWW( p[ 6 ], y32, x_Q16 );
+        y32 = silk_SMLAWW( p[ 5 ], y32, x_Q16 );
+        y32 = silk_SMLAWW( p[ 4 ], y32, x_Q16 );
+        y32 = silk_SMLAWW( p[ 3 ], y32, x_Q16 );
+        y32 = silk_SMLAWW( p[ 2 ], y32, x_Q16 );
+        y32 = silk_SMLAWW( p[ 1 ], y32, x_Q16 );
+        y32 = silk_SMLAWW( p[ 0 ], y32, x_Q16 );
     }
     else
     {

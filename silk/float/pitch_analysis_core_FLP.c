@@ -58,8 +58,7 @@ static void silk_P_Ana_calc_energy_st3(
     opus_int            start_lag,          /* I start lag                                                      */
     opus_int            sf_length,          /* I sub frame length                                               */
     opus_int            nb_subfr,           /* I number of subframes                                            */
-    opus_int            complexity,         /* I Complexity setting                                             */
-    const int           arch                /* I    Run-time architecture                                       */
+    opus_int            complexity          /* I Complexity setting                                             */
 );
 
 /************************************************************/
@@ -413,7 +412,7 @@ opus_int silk_pitch_analysis_core_FLP(      /* O    Voicing estimate: 0 voiced, 
 
         /* Calculate the correlations and energies needed in stage 3 */
         silk_P_Ana_calc_corr_st3( cross_corr_st3, frame, start_lag, sf_length, nb_subfr, complexity, arch );
-        silk_P_Ana_calc_energy_st3( energies_st3, frame, start_lag, sf_length, nb_subfr, complexity, arch );
+        silk_P_Ana_calc_energy_st3( energies_st3, frame, start_lag, sf_length, nb_subfr, complexity );
 
         lag_counter = 0;
         silk_assert( lag == silk_SAT16( lag ) );
@@ -563,8 +562,7 @@ static void silk_P_Ana_calc_energy_st3(
     opus_int            start_lag,          /* I start lag                                                      */
     opus_int            sf_length,          /* I sub frame length                                               */
     opus_int            nb_subfr,           /* I number of subframes                                            */
-    opus_int            complexity,          /* I Complexity setting                                             */
-    const int           arch
+    opus_int            complexity          /* I Complexity setting                                             */
 )
 {
     const silk_float *target_ptr, *basis_ptr;

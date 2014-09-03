@@ -46,7 +46,7 @@ static OPUS_INLINE void silk_nsq_scale_states(
     const opus_int      signal_type             /* I    Signal type                     */
 );
 
-#if !(defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT))
+#if !defined(OPUS_X86_MAY_HAVE_SSE4_1)
 static OPUS_INLINE void silk_noise_shape_quantizer(
     silk_nsq_state      *NSQ,                   /* I/O  NSQ state                       */
     opus_int            signalType,             /* I    Signal type                     */
@@ -176,11 +176,10 @@ void silk_NSQ_c
 /* silk_noise_shape_quantizer  */
 /***********************************/
 
-#if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
-void silk_noise_shape_quantizer(
-#else
-static OPUS_INLINE void silk_noise_shape_quantizer(
+#if !defined(OPUS_X86_MAY_HAVE_SSE4_1)
+static OPUS_INLINE
 #endif
+void silk_noise_shape_quantizer(
     silk_nsq_state      *NSQ,                   /* I/O  NSQ state                       */
     opus_int            signalType,             /* I    Signal type                     */
     const opus_int32    x_sc_Q10[],             /* I                                    */

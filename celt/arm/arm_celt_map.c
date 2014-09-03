@@ -31,7 +31,7 @@
 
 #include "pitch.h"
 
-#if defined(OPUS_HAVE_RTCD) && defined(OPUS_ARM_ASM)
+#if defined(OPUS_HAVE_RTCD)
 
 # if defined(FIXED_POINT)
 opus_val32 (*const CELT_PITCH_XCORR_IMPL[OPUS_ARCHMASK+1])(const opus_val16 *,

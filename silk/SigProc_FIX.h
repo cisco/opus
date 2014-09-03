@@ -43,6 +43,9 @@ extern "C"
 #include "macros.h"
 #include "cpu_support.h"
 
+#if defined(OPUS_X86_MAY_HAVE_SSE4_1)
+#include "x86/SigProc_FIX_sse.h"
+#endif
 
 /********************************************************************/
 /*                    SIGNAL PROCESSING FUNCTIONS                   */
@@ -317,39 +320,6 @@ void silk_burg_modified_c(
     int                         arch                /* I    Run-time architecture                                       */
 );
 
-/*Is run-time CPU detection enabled on this platform?*/
-# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
-void silk_burg_modified_sse4_1(
-    opus_int32                  *res_nrg,           /* O    Residual energy                                             */
-    opus_int                    *res_nrg_Q,         /* O    Residual energy Q value                                     */
-    opus_int32                  A_Q16[],            /* O    Prediction coefficients (length order)                      */
-    const opus_int16            x[],                /* I    Input signal, length: nb_subfr * ( D + subfr_length )       */
-    const opus_int32            minInvGain_Q30,     /* I    Inverse of max prediction gain                              */
-    const opus_int              subfr_length,       /* I    Input signal subframe length (incl. D preceding samples)    */
-    const opus_int              nb_subfr,           /* I    Number of subframes stacked in x                            */
-    const opus_int              D,                  /* I    Order                                                       */
-    int                         arch                /* I    Run-time architecture                                       */
-);
-
-extern void (*const SILK_BURG_MODIFIED_IMPL[OPUS_ARCHMASK + 1])(
-    opus_int32                  *res_nrg,           /* O    Residual energy                                             */
-    opus_int                    *res_nrg_Q,         /* O    Residual energy Q value                                     */
-    opus_int32                  A_Q16[],            /* O    Prediction coefficients (length order)                      */
-    const opus_int16            x[],                /* I    Input signal, length: nb_subfr * ( D + subfr_length )       */
-    const opus_int32            minInvGain_Q30,     /* I    Inverse of max prediction gain                              */
-    const opus_int              subfr_length,       /* I    Input signal subframe length (incl. D preceding samples)    */
-    const opus_int              nb_subfr,           /* I    Number of subframes stacked in x                            */
-    const opus_int              D,                  /* I    Order                                                       */
-    int                         arch                /* I    Run-time architecture                                       */);
-
-#  define silk_burg_modified(_a, _b, _c, _d, _e, _f, _g, _h, arch) \
-    ((*SILK_BURG_MODIFIED_IMPL[(arch) & OPUS_ARCHMASK])(_a, _b, _c, _d, _e, _f, _g, _h, arch))
-# else
-#  define silk_burg_modified(_a, _b, _c, _d, _e, _f, _g, _h, arch) \
-    ((void)(arch), silk_burg_modified_c(_a, _b, _c, _d, _e, _f, _g, _h, arch))
-
-# endif
-
 /* Copy and multiply a vector by a constant */
 void silk_scale_copy_vector16(
     opus_int16                  *data_out,
@@ -375,7 +345,7 @@ opus_int32 silk_inner_prod_aligned(
     const opus_int16 *const     inVec1,             /*    I input vector 1                                              */
     const opus_int16 *const     inVec2,             /*    I input vector 2                                              */
     const opus_int              len,                /*    I vector lengths                                              */
-    const int                   arch                /* I    Run-time architecture                                       */
+    const int                   arch                /*    I Run-time architecture                                       */
 );
 
 
@@ -391,27 +361,6 @@ opus_int64 silk_inner_prod16_aligned_64_c(
     const opus_int16            *inVec2,            /*    I input vector 2                                              */
     const opus_int              len                 /*    I vector lengths                                              */
 );
-
-/*Is run-time CPU detection enabled on this platform?*/
-# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
-opus_int64 silk_inner_prod16_aligned_64_sse4_1(
-    const opus_int16 *,
-    const opus_int16 *,
-    const opus_int
-);
-
-extern opus_int64 (*const SILK_INNER_PROD16_ALIGNED_64_IMPL[OPUS_ARCHMASK + 1])(const opus_int16 *,
-                    const opus_int16 *,
-                    const opus_int);
-
-#  define silk_inner_prod16_aligned_64(_x, _y, len, arch) \
-    ((*SILK_INNER_PROD16_ALIGNED_64_IMPL[(arch) & OPUS_ARCHMASK])(_x, _y, len))
-# else
-#  define silk_inner_prod16_aligned_64(_x, _y, len, arch) \
-    ((void)(arch),silk_inner_prod16_aligned_64_c(_x, _y, len))
-
-# endif
-
 
 /********************************************************************/
 /*                                MACROS                            */
@@ -633,6 +582,14 @@ static OPUS_INLINE opus_int64 silk_max_64(opus_int64 a, opus_int64 b)
 /*#define silk_SMMUL(a32, b32)                (opus_int32)silk_RSHIFT(silk_SMLAL(silk_SMULWB((a32), (b32)), (a32), silk_RSHIFT_ROUND((b32), 16)), 16)*/
 /* the following seems faster on x86 */
 #define silk_SMMUL(a32, b32)                (opus_int32)silk_RSHIFT64(silk_SMULL((a32), (b32)), 32)
+
+#if !defined(OPUS_X86_MAY_HAVE_SSE4_1)
+#define silk_burg_modified(res_nrg, res_nrg_Q, A_Q16, x, minInvGain_Q30, subfr_length, nb_subfr, D, arch) \
+    ((void)(arch), silk_burg_modified_c(res_nrg, res_nrg_Q, A_Q16, x, minInvGain_Q30, subfr_length, nb_subfr, D, arch))
+
+#define silk_inner_prod16_aligned_64(inVec1, inVec2, len, arch) \
+    ((void)(arch),silk_inner_prod16_aligned_64_c(inVec1, inVec2, len))
+#endif
 
 #include "Inlines.h"
 #include "MacroCount.h"

@@ -25,50 +25,19 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#if defined(HAVE_CONFIG_H)
-#include "config.h"
+#ifndef SILK_CPU_H
+#define SILK_CPU_H
+
+#if defined(OPUS_X86_MAY_HAVE_SSE2)
+#  define MAY_HAVE_SSE2(name) name ## _sse2
+# else
+#  define MAY_HAVE_SSE2(name) name ## _c
+# endif
+
+# if defined(OPUS_X86_MAY_HAVE_SSE4_1)
+#  define MAY_HAVE_SSE4_1(name) name ## _sse4_1
+#else
+#  define MAY_HAVE_SSE4_1(name) name ## _c
 #endif
 
-#include "x86/x86_cpu.h"
-#include "celt_lpc.h"
-#include "pitch.h"
-#include "pitch_sse.h"
-
-void (*const CELT_FIR_IMPL[ OPUS_ARCHMASK + 1 ] )(
-         const opus_val16 *x,
-         const opus_val16 *num,
-         opus_val16       *y,
-         int              N,
-         int              ord,
-         opus_val16       *mem,
-         const int        arch
-) = {
-  celt_fir_c,                /* non-sse */
-  celt_fir_c, 
-  MAY_HAVE_SSE4_1( celt_fir ), /* sse4.1  */
-  NULL
-};
-
-void (*const XCORR_KERNEL_IMPL[ OPUS_ARCHMASK + 1 ] )(
-         const opus_val16 *x,
-         const opus_val16 *y,
-         opus_val32       sum[ 4 ],
-         int              len
-) = {
-  xcorr_kernel_c,                /* non-sse */
-  xcorr_kernel_c,
-  MAY_HAVE_SSE4_1( xcorr_kernel ), /* sse4.1  */
-  NULL
-};
-
-opus_val32 (*const CELT_INNER_PROD_IMPL[ OPUS_ARCHMASK + 1 ] )(
-         const opus_val16 *x,
-         const opus_val16 *y,
-         int              N
-) = {
-  celt_inner_prod_c,                /* non-sse */
-  MAY_HAVE_SSE2( celt_inner_prod ), 
-  MAY_HAVE_SSE4_1( celt_inner_prod ), /* sse4.1  */
-  NULL
-};
-
+#endif

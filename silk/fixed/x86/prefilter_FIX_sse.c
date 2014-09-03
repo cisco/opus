@@ -1,10 +1,33 @@
+/* Copyright (c) 2014, Cisco Systems, INC
+   Written by XiangMingZhu WeiZhou MinPeng YanWang
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions
+   are met:
+
+   - Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+   - Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+   ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+   OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+   PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
-#if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
-
-#pragma GCC target ("sse4.1")
 
 #include <xmmintrin.h>
 #include <emmintrin.h>
@@ -41,20 +64,22 @@ void silk_warped_LPC_analysis_filter_FIX_sse4_1(
             register opus_int32 state_8, state_9, state_a;
             register opus_int64 coef_Q13_8, coef_Q13_9;
 
-            coef_Q13_3210 = _mm_cvtepi16_epi32(*(__m128i*)(&coef_Q13[ 0 ]));
-            coef_Q13_7654 = _mm_cvtepi16_epi32(*(__m128i*)(&coef_Q13[ 4 ]));
+            silk_assert( length > 0 );
 
-            coef_Q13_0123 = _mm_shuffle_epi32(coef_Q13_3210, _MM_SHUFFLE(0, 1, 2, 3));
-            coef_Q13_4567 = _mm_shuffle_epi32(coef_Q13_7654, _MM_SHUFFLE(0, 1, 2, 3));
+            coef_Q13_3210 = _mm_cvtepi16_epi32( *(__m128i*)(&coef_Q13[ 0 ] ) );
+            coef_Q13_7654 = _mm_cvtepi16_epi32( *(__m128i*)(&coef_Q13[ 4 ] ) );
+
+            coef_Q13_0123 = _mm_shuffle_epi32( coef_Q13_3210, _MM_SHUFFLE( 0, 1, 2, 3 ) );
+            coef_Q13_4567 = _mm_shuffle_epi32( coef_Q13_7654, _MM_SHUFFLE( 0, 1, 2, 3 ) );
 
             coef_Q13_8 = (opus_int64) coef_Q13[ 8 ];
             coef_Q13_9 = (opus_int64) coef_Q13[ 9 ];
 
-            state_0123 = _mm_loadu_si128((__m128i*)(&state[ 0 ]));
-            state_4567 = _mm_loadu_si128((__m128i*)(&state[ 4 ]));
+            state_0123 = _mm_loadu_si128( (__m128i*)(&state[ 0 ] ) );
+            state_4567 = _mm_loadu_si128( (__m128i*)(&state[ 4 ] ) );
 
-            state_0123 = _mm_shuffle_epi32(state_0123, _MM_SHUFFLE(0, 1, 2, 3));
-            state_4567 = _mm_shuffle_epi32(state_4567, _MM_SHUFFLE(0, 1, 2, 3));
+            state_0123 = _mm_shuffle_epi32( state_0123, _MM_SHUFFLE( 0, 1, 2, 3 ) );
+            state_4567 = _mm_shuffle_epi32( state_4567, _MM_SHUFFLE( 0, 1, 2, 3 ) );
 
             state_8 = state[ 8 ];
             state_9 = state[ 9 ];
@@ -62,51 +87,49 @@ void silk_warped_LPC_analysis_filter_FIX_sse4_1(
 
             for( n = 0; n < length; n++ )
             {
-                xmm_product1 = _mm_mul_epi32(coef_Q13_0123, state_0123); // 64-bit multiply, only 2 pairs
-                xmm_product2 = _mm_mul_epi32(coef_Q13_4567, state_4567);
+                xmm_product1 = _mm_mul_epi32( coef_Q13_0123, state_0123 ); /* 64-bit multiply, only 2 pairs */
+                xmm_product2 = _mm_mul_epi32( coef_Q13_4567, state_4567 );
 
-                xmm_tempa = _mm_shuffle_epi32(state_0123, _MM_SHUFFLE(0, 1, 2, 3));
-                xmm_tempb = _mm_shuffle_epi32(state_4567, _MM_SHUFFLE(0, 1, 2, 3));
+                xmm_tempa = _mm_shuffle_epi32( state_0123, _MM_SHUFFLE( 0, 1, 2, 3 ) );
+                xmm_tempb = _mm_shuffle_epi32( state_4567, _MM_SHUFFLE( 0, 1, 2, 3 ) );
 
-                xmm_product1 = _mm_srli_epi64(xmm_product1, 16); // >> 16, zero extending works
-                xmm_product2 = _mm_srli_epi64(xmm_product2, 16);
+                xmm_product1 = _mm_srli_epi64( xmm_product1, 16 ); /* >> 16, zero extending works */
+                xmm_product2 = _mm_srli_epi64( xmm_product2, 16 );
 
-                xmm_tempa = _mm_mul_epi32(coef_Q13_3210, xmm_tempa);
-                xmm_tempb = _mm_mul_epi32(coef_Q13_7654, xmm_tempb);
+                xmm_tempa = _mm_mul_epi32( coef_Q13_3210, xmm_tempa );
+                xmm_tempb = _mm_mul_epi32( coef_Q13_7654, xmm_tempb );
 
-                xmm_tempa = _mm_srli_epi64(xmm_tempa, 16);
-                xmm_tempb = _mm_srli_epi64(xmm_tempb, 16);
+                xmm_tempa = _mm_srli_epi64( xmm_tempa, 16 );
+                xmm_tempb = _mm_srli_epi64( xmm_tempb, 16 );
 
-                xmm_tempa = _mm_add_epi32(xmm_tempa, xmm_product1);
-                xmm_tempb = _mm_add_epi32(xmm_tempb, xmm_product2);
-                xmm_tempa = _mm_add_epi32(xmm_tempa, xmm_tempb);
+                xmm_tempa = _mm_add_epi32( xmm_tempa, xmm_product1 );
+                xmm_tempb = _mm_add_epi32( xmm_tempb, xmm_product2 );
+                xmm_tempa = _mm_add_epi32( xmm_tempa, xmm_tempb );
 
                 sum  = (coef_Q13_8 * state_8) >> 16;
                 sum += (coef_Q13_9 * state_9) >> 16;
-                sum += _mm_extract_epi32(xmm_tempa, 0);
-                sum += _mm_extract_epi32(xmm_tempa, 2);
 
-                res_Q2[ n ] = silk_LSHIFT( (opus_int32)input[ n ], 2 ) - silk_RSHIFT_ROUND((5 + sum), 9);
+                xmm_tempa = _mm_add_epi32( xmm_tempa, _mm_shuffle_epi32( xmm_tempa, _MM_SHUFFLE( 0, 0, 0, 2 ) ) );
+                sum += _mm_cvtsi128_si32( xmm_tempa);
+                res_Q2[ n ] = silk_LSHIFT( (opus_int32)input[ n ], 2 ) - silk_RSHIFT_ROUND( ( 5 + sum ), 9);
 
-                // move right
+                /* move right */
                 state_a = state_9;
                 state_9 = state_8;
-                state_8 = _mm_extract_epi32(state_4567, 0);
-                state_4567 = _mm_alignr_epi8(state_0123, state_4567, 4);
-                state_0123 = _mm_srli_si128(state_0123, 4);
-                state_0123 = _mm_insert_epi32(state_0123, input[ n ] << 14, 3);
+                state_8 = _mm_cvtsi128_si32( state_4567 );
+                state_4567 = _mm_alignr_epi8( state_0123, state_4567, 4 );
+
+                state_0123 = _mm_alignr_epi8( _mm_cvtsi32_si128( silk_LSHIFT( input[ n ], 14 ) ), state_0123, 4 );
             }
 
-            _mm_storeu_si128((__m128i*)(&state[ 0 ]), _mm_shuffle_epi32(state_0123, _MM_SHUFFLE(0, 1, 2, 3)));
-            _mm_storeu_si128((__m128i*)(&state[ 4 ]), _mm_shuffle_epi32(state_4567, _MM_SHUFFLE(0, 1, 2, 3)));
+            _mm_storeu_si128( (__m128i*)( &state[ 0 ] ), _mm_shuffle_epi32( state_0123, _MM_SHUFFLE( 0, 1, 2, 3 ) ) );
+            _mm_storeu_si128( (__m128i*)( &state[ 4 ] ), _mm_shuffle_epi32( state_4567, _MM_SHUFFLE( 0, 1, 2, 3 ) ) );
             state[ 8 ] = state_8;
             state[ 9 ] = state_9;
             state[ 10 ] = state_a;
 
             return;
         }
-
-	    return;
     }
 
     for( n = 0; n < length; n++ ) {
@@ -134,6 +157,4 @@ void silk_warped_LPC_analysis_filter_FIX_sse4_1(
         res_Q2[ n ] = silk_LSHIFT( (opus_int32)input[ n ], 2 ) - silk_RSHIFT_ROUND( acc_Q11, 9 );
     }
 }
-
-#endif
 

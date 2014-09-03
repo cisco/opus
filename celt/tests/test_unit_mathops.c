@@ -263,11 +263,13 @@ void testilog2(void)
 }
 #endif
 
-#if (defined(HAVE_SSE4_1) || defined(HAVE_SSE2)) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+#if defined(OPUS_X86_MAY_HAVE_SSE4_1) || defined(OPUS_X86_MAY_HAVE_SSE2)
 #include "x86/pitch_sse.c"
+#if defined(OPUS_X86_MAY_HAVE_SSE4_1)
 #include "x86/celt_lpc_sse.c"
+#endif
 #include "x86/x86_celt_map.c"
-# endif
+#endif
 
 int main(void)
 {

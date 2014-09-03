@@ -31,6 +31,10 @@
 #include "arch.h"
 #include "cpu_support.h"
 
+#if defined(OPUS_X86_MAY_HAVE_SSE4_1)
+#include "x86/celt_lpc_sse.h"
+#endif
+
 #define LPC_ORDER 24
 
 void _celt_lpc(opus_val16 *_lpc, const opus_val32 *ac, int p);
@@ -44,33 +48,10 @@ void celt_fir_c(
          opus_val16 *mem,
          const int arch);
 
-/*Is run-time CPU detection enabled on this platform?*/
-# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
-void celt_fir_sse4_1(
-         const opus_val16 *x,
-         const opus_val16 *num,
-         opus_val16 *y,
-         int N,
-         int ord,
-         opus_val16 *mem,
-         const int arch);
-
-extern void (*const CELT_FIR_IMPL[OPUS_ARCHMASK + 1])(
-         const opus_val16 *x,
-         const opus_val16 *num,
-         opus_val16 *y,
-         int N,
-         int ord,
-         opus_val16 *mem,
-         const int arch);
-
-#  define celt_fir(_a, _b, _c, _d, _e, _f, arch) \
-    ((*CELT_FIR_IMPL[(arch) & OPUS_ARCHMASK])(_a, _b, _c, _d, _e, _f, arch))
-# else
-#  define celt_fir(_a, _b, _c, _d, _e, _f, arch) \
-    (celt_fir_c(_a, _b, _c, _d, _e, _f, arch))
-
-# endif
+#if !defined(OPUS_X86_MAY_HAVE_SSE4_1)
+#define celt_fir(x, num, y, N, ord, mem, arch) \
+    (celt_fir_c(x, num, y, N, ord, mem, arch))
+#endif
 
 void celt_iir(const opus_val32 *x,
          const opus_val16 *den,

@@ -73,7 +73,7 @@ static void silk_P_Ana_calc_energy_st3(
     opus_int          sf_length,                       /* I length of one 5 ms subframe */
     opus_int          nb_subfr,                        /* I number of subframes         */
     opus_int          complexity,                      /* I Complexity setting          */
-    const int         arch                             /* I Run-time architecture   s    */
+    const int         arch                             /* I Run-time architecture       */
 );
 
 /*************************************************************/

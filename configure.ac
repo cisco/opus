@@ -349,26 +349,50 @@ AM_CONDITIONAL([OPUS_ARM_INLINE_ASM],
 AM_CONDITIONAL([OPUS_ARM_EXTERNAL_ASM],
     [test x"${asm_optimization%% *}" = x"ARM"])
 
-AS_IF([test x"$enable_rtcd" = x"yes"],[
-    AS_IF([test x"$rtcd_support" != x"no"],[
-        AC_DEFINE([OPUS_HAVE_RTCD], [1],
-            [Use run-time CPU capabilities detection])
-        OPUS_HAVE_RTCD=1
-        AC_SUBST(OPUS_HAVE_RTCD)
-    ])
-],[
-    rtcd_support="disabled"
-])
-
+AM_CONDITIONAL([HAVE_SSE4_1], [false])
+AM_CONDITIONAL([HAVE_SSE2], [false])
 AS_IF([test x"$enable_intrinsics" = x"yes"],[
 AS_IF([test x"$enable_float" = x"no"], 
 [AS_IF([test x"$host_cpu" = x"i386" -o x"$host_cpu" = x"i686" -o x"$host_cpu" = x"x86_64"],[
     AS_IF([test x"$enable_rtcd" = x"yes"],[
+            get_cpuid_by_asm="no"
+            AC_MSG_CHECKING([Get CPU Info])
+            AC_LINK_IFELSE(AC_LANG_PROGRAM([
+                 #include <stdio.h>
+            ],[
+                 unsigned int CPUInfo0;
+                 unsigned int CPUInfo1;
+                 unsigned int CPUInfo2;
+                 unsigned int CPUInfo3;
+                 unsigned int InfoType;
+                 __asm__ __volatile__ (
+                 "cpuid11":
+                 "=a" (CPUInfo0),
+                 "=b" (CPUInfo1),
+                 "=c" (CPUInfo2),
+                 "=d" (CPUInfo3) :
+                 "a" (InfoType), "c" (0)
+                );
+            ]),
+            [get_cpuid_by_asm="yes"
+             AC_MSG_RESULT([Inline Assembly])],
+             [AC_LINK_IFELSE(AC_LANG_PROGRAM([
+                 #include <cpuid.h>
+            ],[
+                 unsigned int CPUInfo0;
+                 unsigned int CPUInfo1;
+                 unsigned int CPUInfo2;
+                 unsigned int CPUInfo3;
+                 unsigned int InfoType;
+                 __get_cpuid(InfoType, &CPUInfo0, &CPUInfo1, &CPUInfo2, &CPUInfo3);
+            ]),
+            [AC_MSG_RESULT([C method])],
+            [AC_MSG_ERROR([not support Get CPU Info, please disable intrinsics ])])])
+
        AC_MSG_CHECKING([sse4.1])
        TMP_CFLAGS="$CFLAGS"
        gcc -Q --help=target | grep "\-msse4.1 "
        AS_IF([test x"$?" = x"0"],[
-            AC_MSG_RESULT([yes])
             CFLAGS="$CFLAGS -msse4.1"
             AC_CHECK_HEADER(xmmintrin.h, [], [AC_MSG_ERROR([Couldn't find xmmintrin.h])])
             AC_CHECK_HEADER(emmintrin.h, [], [AC_MSG_ERROR([Couldn't find emmintrin.h])])
@@ -389,13 +413,17 @@ AS_IF([test x"$enable_float" = x"no"],
                  __m128i mtest = _mm_setzero_si128();
                  mtest = _mm_cmpeq_epi64(mtest, mtest);
             ]),
-            [], [AC_MSG_ERROR([Compiler & linker failure for sse4.1])])
+            [AC_MSG_RESULT([yes])], [AC_MSG_ERROR([Compiler & linker failure for sse4.1, please disable intrinsics])])
 
             CFLAGS="$TMP_CFLAGS"
-            AC_DEFINE([HAVE_SSE4_1], [1], [For x86 sse4.1 instrinsics optimize])
-            AC_DEFINE([HAVE_SSE2], [1], [For x86 sse2 instrinsics optimize])
-            AC_DEFINE([OPUS_HAVE_RTCD], [1], [Use run-time CPU capabilities detection])
-            rtcd_support="yes"],[
+            AC_DEFINE([OPUS_X86_MAY_HAVE_SSE4_1], [1], [For x86 sse4.1 instrinsics optimize])
+            AC_DEFINE([OPUS_X86_MAY_HAVE_SSE2], [1], [For x86 sse2 instrinsics optimize])
+            rtcd_support="x86 sse4.1"
+            AM_CONDITIONAL([HAVE_SSE4_1], [true])
+            AM_CONDITIONAL([HAVE_SSE2], [true])
+            AS_IF([test x"$get_cpuid_by_asm" = x"yes"],[AC_DEFINE([CPU_INFO_BY_ASM], [1], [Get CPU Info by asm method])],
+            [AC_DEFINE([CPU_INFO_BY_C], [1], [Get CPU Info by c method])])
+             ],[
                gcc -Q --help=target | grep "\-msse2 "
                AC_MSG_CHECKING([sse2])
                AS_IF([test x"$?" = x"0"],[
@@ -410,17 +438,30 @@ AS_IF([test x"$enable_float" = x"no"],
                    ],[
                         __m128i mtest = _mm_setzero_si128();
                    ]),
-                   [], [AC_MSG_ERROR([Compiler & linker failure for sse2])])
+                   [AC_MSG_RESULT([yes])], [AC_MSG_ERROR([Compiler & linker failure for sse2, please disable intrinsics])])
 
                   CFLAGS="$TMP_CFLAGS"
-                  AC_DEFINE([HAVE_SSE2], [1], [For x86 sse2 instrinsics optimize])
-                  AC_DEFINE([OPUS_HAVE_RTCD], [1], [Use run-time CPU capabilities detection])
-                  rtcd_support="yes"
+                  AC_DEFINE([OPUS_X86_MAY_HAVE_SSE2], [1], [For x86 sse2 instrinsics optimize])
+                  rtcd_support="x86 sse2"
+                  AM_CONDITIONAL([HAVE_SSE2], [true])
+                  AS_IF([test x"$get_cpuid_by_asm" = x"yes"],[AC_DEFINE([CPU_INFO_BY_ASM], [1], [Get CPU Info by asm method])],
+                  [AC_DEFINE([CPU_INFO_BY_C], [1], [Get CPU Info by c method])])
             ],[enable_intrinsics="no"])
         ])
     ], [enable_intrinsics="no"])
 ])
 ], [enable_intrinsics="no"])
+])
+
+AS_IF([test x"$enable_rtcd" = x"yes"],[
+    AS_IF([test x"$rtcd_support" != x"no"],[
+        AC_DEFINE([OPUS_HAVE_RTCD], [1],
+            [Use run-time CPU capabilities detection])
+        OPUS_HAVE_RTCD=1
+        AC_SUBST(OPUS_HAVE_RTCD)
+    ])
+],[
+    rtcd_support="disabled"
 ])
 
 AC_ARG_ENABLE([assertions],

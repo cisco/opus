@@ -1,6 +1,6 @@
-/* Copyright (c) 2010 Xiph.Org Foundation
- * Copyright (c) 2013 Parrot */
-/*
+/* Copyright (c) 2014, Cisco Systems, INC
+   Written by XiangMingZhu WeiZhou MinPeng YanWang
+
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions
    are met:
@@ -25,24 +25,34 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#if !defined(X86CPU_H)
-# define X86CPU_H
+#ifndef CELT_LPC_SSE_H
+#define CELT_LPC_SSE_H
 
-# if defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
-
-#if defined(HAVE_SSE2)
-#  define MAY_HAVE_SSE2(name) name ## _sse2
-# else
-#  define MAY_HAVE_SSE2(name) name ## _c
-# endif
-
-# if defined(HAVE_SSE4_1)
-#  define MAY_HAVE_SSE4_1(name) name ## _sse4_1
-#else
-#  define MAY_HAVE_SSE4_1(name) name ## _c
+#ifdef HAVE_CONFIG_H
+#include "config.h"
 #endif
 
-int opus_select_arch(void);
+#if defined(OPUS_X86_MAY_HAVE_SSE4_1)
+void celt_fir_sse4_1(
+         const opus_val16 *x,
+         const opus_val16 *num,
+         opus_val16 *y,
+         int N,
+         int ord,
+         opus_val16 *mem,
+         const int arch);
+
+extern void (*const CELT_FIR_IMPL[OPUS_ARCHMASK + 1])(
+         const opus_val16 *x,
+         const opus_val16 *num,
+         opus_val16 *y,
+         int N,
+         int ord,
+         opus_val16 *mem,
+         const int arch);
+
+#  define celt_fir(x, num, y, N, ord, mem, arch) \
+    ((*CELT_FIR_IMPL[(arch) & OPUS_ARCHMASK])(x, num, y, N, ord, mem, arch))
 
 #endif
 #endif

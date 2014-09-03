@@ -45,7 +45,7 @@ void silk_LTP_analysis_filter_FIX(
     const opus_int16 *x_ptr, *x_lag_ptr;
     opus_int16   Btmp_Q14[ LTP_ORDER ];
     opus_int16   *LTP_res_ptr;
-    opus_int     k, i, j;
+    opus_int     k, i;
     opus_int32   LTP_est;
 
     x_ptr = x;

@@ -1,11 +1,33 @@
+/* Copyright (c) 2014, Cisco Systems, INC
+   Written by XiangMingZhu WeiZhou MinPeng YanWang
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions
+   are met:
+
+   - Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+   - Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+   ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+   OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+   PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
-#if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
-
-#pragma GCC target ("sse4.1")
-
 
 #include <xmmintrin.h>
 #include <emmintrin.h>
@@ -20,9 +42,9 @@ static const opus_int32 tiltWeights[ VAD_N_BANDS ] = { 30000, 6000, -12000, -120
 /***************************************/
 /* Get the speech activity level in Q8 */
 /***************************************/
-opus_int silk_VAD_GetSA_Q8_sse4_1(                                     /* O    Return value, 0 if success                  */
-    silk_encoder_state          *psEncC,                        /* I/O  Encoder state                               */
-    const opus_int16            pIn[]                           /* I    PCM input                                   */
+opus_int silk_VAD_GetSA_Q8_sse4_1(                  /* O    Return value, 0 if success                  */
+    silk_encoder_state          *psEncC,            /* I/O  Encoder state                               */
+    const opus_int16            pIn[]               /* I    PCM input                                   */
 )
 {
     opus_int   SA_Q15, pSNR_dB_Q7, input_tilt;
@@ -39,7 +61,6 @@ opus_int silk_VAD_GetSA_Q8_sse4_1(                                     /* O    R
     opus_int   ret = 0;
     silk_VAD_state *psSilk_VAD = &psEncC->sVAD;
 
-    __m128i xmm_X, xmm_acc;
     SAVE_STACK;
 
     /* Safety checks */
@@ -108,25 +129,23 @@ opus_int silk_VAD_GetSA_Q8_sse4_1(                                     /* O    R
         /* initialize with summed energy of last subframe */
         Xnrg[ b ] = psSilk_VAD->XnrgSubfr[ b ];
         for( s = 0; s < VAD_INTERNAL_SUBFRAMES; s++ ) {
+            __m128i xmm_X, xmm_acc;
             sumSquared = 0;
 
             xmm_acc = _mm_setzero_si128();
 
             for( i = 0; i < dec_subframe_length - 7; i += 8 )
             {
-                xmm_X   = _mm_loadu_si128((__m128i*)&(X[ X_offset[ b ] + i + dec_subframe_offset ]));
-                xmm_X   = _mm_srai_epi16(xmm_X, 3);
-                xmm_X   = _mm_madd_epi16(xmm_X, xmm_X);
-                xmm_acc = _mm_add_epi32(xmm_acc, xmm_X);
+                xmm_X   = _mm_loadu_si128( (__m128i*)&(X[ X_offset[ b ] + i + dec_subframe_offset ] ) );
+                xmm_X   = _mm_srai_epi16( xmm_X, 3 );
+                xmm_X   = _mm_madd_epi16( xmm_X, xmm_X );
+                xmm_acc = _mm_add_epi32( xmm_acc, xmm_X );
             }
-            /*
-            xmm_acc = _mm_hadd_epi32(xmm_acc, xmm_acc);
-            xmm_acc = _mm_hadd_epi32(xmm_acc, xmm_acc);
-            */
-            xmm_acc = _mm_add_epi32(xmm_acc, _mm_unpackhi_epi64(xmm_acc, xmm_acc));
-            xmm_acc = _mm_add_epi32(xmm_acc, _mm_shufflelo_epi16(xmm_acc, 0x0E));
 
-            sumSquared += _mm_cvtsi128_si32(xmm_acc);
+            xmm_acc = _mm_add_epi32( xmm_acc, _mm_unpackhi_epi64( xmm_acc, xmm_acc ) );
+            xmm_acc = _mm_add_epi32( xmm_acc, _mm_shufflelo_epi16( xmm_acc, 0x0E ) );
+
+            sumSquared += _mm_cvtsi128_si32( xmm_acc );
 
             for( ; i < dec_subframe_length; i++ ) {
                 /* The energy will be less than dec_subframe_length * ( silk_int16_MIN / 8 ) ^ 2.            */
@@ -256,5 +275,4 @@ opus_int silk_VAD_GetSA_Q8_sse4_1(                                     /* O    R
     RESTORE_STACK;
     return( ret );
 }
-#endif
 

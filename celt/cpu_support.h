@@ -31,8 +31,7 @@
 #include "opus_types.h"
 #include "opus_defines.h"
 
-#if defined(OPUS_HAVE_RTCD)
-#if defined(OPUS_ARM_ASM)
+#if defined(OPUS_HAVE_RTCD) && defined(OPUS_ARM_ASM)
 #include "arm/armcpu.h"
 
 /* We currently support 4 ARM variants:
@@ -43,21 +42,18 @@
  */
 #define OPUS_ARCHMASK 3
 
-#elif defined(FIXED_POINT)
+#elif defined(OPUS_X86_MAY_HAVE_SSE2) || defined(OPUS_X86_MAY_HAVE_SSE4_1)
 
+#include "x86/x86_cpu.h"
 /* We currently support 3 x86 variants:
  * arch[0] -> non-sse
  * arch[1] -> sse2
  * arch[2] -> sse4.1
- * arch[3] -> non-sse
+ * arch[3] -> NULL
  */
 #define OPUS_ARCHMASK 3
-#include "x86/x86cpu.h"
+int opus_select_arch(void);
 
-#else
-#define OPUS_ARCHMASK 0
-
-#endif
 #else
 #define OPUS_ARCHMASK 0
 
@@ -66,5 +62,5 @@ static OPUS_INLINE int opus_select_arch(void)
   return 0;
 }
 #endif
-
 #endif
+

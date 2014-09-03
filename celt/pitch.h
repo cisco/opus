@@ -37,7 +37,7 @@
 #include "modes.h"
 #include "cpu_support.h"
 
-#if defined(__SSE__) && !defined(FIXED_POINT)
+#if defined(__SSE__) && !defined(FIXED_POINT) || defined(OPUS_X86_MAY_HAVE_SSE4_1) || defined(OPUS_X86_MAY_HAVE_SSE2)
 #include "x86/pitch_sse.h"
 #endif
 
@@ -122,28 +122,10 @@ static OPUS_INLINE void xcorr_kernel_c(const opus_val16 * x, const opus_val16 * 
    }
 }
 
-# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
-
-void xcorr_kernel_sse4_1(
-                    const opus_int16 *,
-                    const opus_int16 *,
-                    opus_val32       *,
-                    int) ;
-
-extern void (*const XCORR_KERNEL_IMPL[OPUS_ARCHMASK + 1])(
-                    const opus_int16 *,
-                    const opus_int16 *,
-                    opus_val32       *,
-                    int);
-
-#  define xcorr_kernel(_x, _y, _z, len, arch) \
-    ((*XCORR_KERNEL_IMPL[(arch) & OPUS_ARCHMASK])(_x, _y, _z, len))
-# else
-
-#  define xcorr_kernel(_x, _y, _z, len, arch) \
-    ((void)(arch),xcorr_kernel_c(_x, _y, _z, len))
-    
-# endif
+#if !defined(OPUS_X86_MAY_HAVE_SSE4_1)
+#define xcorr_kernel(x, y, sum, len, arch) \
+    ((void)(arch),xcorr_kernel_c(x, y, sum, len))
+#endif
 
 #endif /* OVERRIDE_XCORR_KERNEL */
 
@@ -165,7 +147,6 @@ static OPUS_INLINE void dual_inner_prod(const opus_val16 *x, const opus_val16 *y
 }
 #endif
 
-
 #ifndef OVERRIDE_CELT_INNER_PROD
 static OPUS_INLINE opus_val32 celt_inner_prod_c(const opus_val16 *x, const opus_val16 *y,
       int N)
@@ -177,40 +158,12 @@ static OPUS_INLINE opus_val32 celt_inner_prod_c(const opus_val16 *x, const opus_
    return xy;
 }
 
-/*Is run-time CPU detection enabled on this platform?*/
-# if (defined(HAVE_SSE4_1) || defined(HAVE_SSE2)) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
-# if defined(HAVE_SSE4_1)
-opus_val32 celt_inner_prod_sse4_1(
-    const opus_int16 *,
-    const opus_int16 *,
-    int
-) ;
-# endif
+#if !(defined(OPUS_X86_MAY_HAVE_SSE4_1) || defined(OPUS_X86_MAY_HAVE_SSE2))
+#define celt_inner_prod(x, y, N, arch) \
+    ((void)(arch),celt_inner_prod_c(x, y, N))
+#endif
 
-# if defined(HAVE_SSE2)
-opus_val32 celt_inner_prod_sse2(
-    const opus_int16 *,
-    const opus_int16 *,
-    int
-) ;
-# endif
-
-opus_val32 celt_inner_prod_c(const opus_val16 *x, const opus_val16 *y,
-      int N);
-
-extern opus_val32 (*const CELT_INNER_PROD_IMPL[OPUS_ARCHMASK + 1])(
-                    const opus_int16 *,
-                    const opus_int16 *,
-                    int);
-
-#  define celt_inner_prod(_x, _y, len, arch) \
-    ((*CELT_INNER_PROD_IMPL[(arch) & OPUS_ARCHMASK])(_x, _y, len))
-
-# else
-#  define celt_inner_prod(_x, _y, len, arch) \
-    ((void)(arch),celt_inner_prod_c(_x, _y, len))
-# endif
-# endif
+#endif
 
 #ifdef FIXED_POINT
 opus_val32

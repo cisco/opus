@@ -33,14 +33,12 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "stack_alloc.h"
 
 /* Silk VAD noise level estimation */
-# if defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
-#else
-static OPUS_INLINE
-#endif
-void silk_VAD_GetNoiseLevels(
+# if !defined(OPUS_X86_MAY_HAVE_SSE4_1)
+static OPUS_INLINE void silk_VAD_GetNoiseLevels(
     const opus_int32             pX[ VAD_N_BANDS ], /* I    subband energies                            */
     silk_VAD_state              *psSilk_VAD         /* I/O  Pointer to Silk VAD state                   */
 );
+#endif
 
 /**********************************/
 /* Initialization of the Silk VAD */
@@ -81,7 +79,7 @@ static const opus_int32 tiltWeights[ VAD_N_BANDS ] = { 30000, 6000, -12000, -120
 /***************************************/
 /* Get the speech activity level in Q8 */
 /***************************************/
-opus_int silk_VAD_GetSA_Q8_c(                                     /* O    Return value, 0 if success                  */
+opus_int silk_VAD_GetSA_Q8_c(                                   /* O    Return value, 0 if success                  */
     silk_encoder_state          *psEncC,                        /* I/O  Encoder state                               */
     const opus_int16            pIn[]                           /* I    PCM input                                   */
 )
@@ -300,17 +298,13 @@ opus_int silk_VAD_GetSA_Q8_c(                                     /* O    Return
 /**************************/
 /* Noise level estimation */
 /**************************/
-# if  defined(HAVE_SSE4_1) && defined(OPUS_HAVE_RTCD) && defined(FIXED_POINT)
+# if  !defined(OPUS_X86_MAY_HAVE_SSE4_1)
+static OPUS_INLINE
+#endif
 void silk_VAD_GetNoiseLevels(
     const opus_int32            pX[ VAD_N_BANDS ],  /* I    subband energies                            */
     silk_VAD_state              *psSilk_VAD         /* I/O  Pointer to Silk VAD state                   */
 )
-#else
-static OPUS_INLINE void silk_VAD_GetNoiseLevels(
-    const opus_int32            pX[ VAD_N_BANDS ],  /* I    subband energies                            */
-    silk_VAD_state              *psSilk_VAD         /* I/O  Pointer to Silk VAD state                   */
-)
-#endif
 {
     opus_int   k;
     opus_int32 nl, nrg, inv_nrg;
