@@ -112,6 +112,7 @@ void xcorr_kernel_sse4_1(const opus_val16 * x, const opus_val16 * y, opus_val32 
     __m128i vecX, vecX0, vecX1, vecX2, vecX3;
     __m128i vecY0, vecY1, vecY2, vecY3;
     __m128i sum0, sum1, sum2, sum3, vecSum;
+    __m128i initSum;
 
     celt_assert(len >= 3);
 
@@ -183,7 +184,9 @@ void xcorr_kernel_sse4_1(const opus_val16 * x, const opus_val16 * y, opus_val32 
         vecSum = _mm_add_epi32( vecSum, sum0 );
     }
 
-    _mm_storeu_si128( (__m128i*)(sum), vecSum );
+    initSum = _mm_loadu_si128( (__m128i*)(&sum[ 0 ] ) );
+    initSum = _mm_add_epi32( initSum, vecSum );
+    _mm_storeu_si128( (__m128i*)(sum), initSum );
 }
 #endif
 
